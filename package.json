@@ -1,0 +1,39 @@
+{
+  "name": "webgl-support",
+  "version": "0.0.2",
+  "description": "Webgl 2 helpers",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "npm run clean & npm run rollup",
+    "rollup": "rollup -c ./rollup.config.js",
+    "republish": "npm unpublish --force & npm publish",
+    "clean": "rimraf dist"
+  },
+  "files": [
+    "dist/**"
+  ],
+  "publishConfig": {
+    "registry": "http://localhost:4873"
+  },
+  "author": "Yah",
+  "license": "ISC",
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^13.2.1",
+    "@typescript-eslint/eslint-plugin": "^4.33.0",
+    "@typescript-eslint/parser": "^4.33.0",
+    "eslint": "^7.26.0",
+    "prettier": "^2.4.1",
+    "rimraf": "^3.0.2",
+    "rollup": "^2.58.0",
+    "rollup-plugin-eslint": "^4.0.0",
+    "rollup-plugin-ts-treeshaking": "^1.0.2",
+    "rollup-plugin-typescript2": "^0.31.2",
+    "ts-node": "^10.2.1",
+    "tslib": "^2.3.1",
+    "typescript": "^4.6.3"
+  },
+  "dependencies": {
+    "gl-matrix": "^3.4.3"
+  }
+}
