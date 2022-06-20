@@ -13,9 +13,6 @@
   "files": [
     "dist/**"
   ],
-  "publishConfig": {
-    "registry": "http://localhost:4873"
-  },
   "author": "Yah",
   "license": "ISC",
   "devDependencies": {

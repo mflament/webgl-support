@@ -13,13 +13,19 @@ export class GLContext {
   readonly gl: WebGL2RenderingContext;
   readonly glState: GLRenderState;
 
+  private _frames = 0;
   private readonly _resizeObserver = new ResizeObserver(() => this.onresize());
 
   private _renderer: Renderer = new NoopRenderer();
 
   private _runningState?: DefaultRunningState;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas?: HTMLCanvasElement) {
+    if (!canvas) {
+      canvas = document.createElement('canvas');
+      canvas.id = 'glcanvas';
+      document.body.append(canvas);
+    }
     this.canvas = canvas;
     this.gl = check(this.canvas.getContext('webgl2'), 'webgl2 context');
     this.glState = new GLRenderState(this.gl);
@@ -106,6 +112,12 @@ export class GLContext {
     return new GLFrameBuffer(this);
   }
 
+  flushFrames(): number {
+    const frames = this._frames;
+    this._frames = 0;
+    return frames;
+  }
+
   programUniformsFactory(program: WebGLProgram): ProgramUniformsFactory {
     return uniformsFactory(this, program);
   }
@@ -121,6 +133,7 @@ export class GLContext {
     if (state) {
       state.update(dt);
       this._renderer.render(state);
+      this._frames++;
       requestAnimationFrame(this.render);
     } else {
       this._renderer.render({ time: 0, dt });
