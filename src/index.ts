@@ -10,3 +10,4 @@ export * from './Renderer';
 export * from './renderers/clear';
 export * from './renderers/quad';
 export * from './FPSOverlay';
+export * from './UniformBlockDumper';
