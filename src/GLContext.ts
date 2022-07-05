@@ -1,11 +1,10 @@
-import { Renderer, RunningState } from './Renderer';
-import { check } from './GLUtils';
-import { ProgramBuilder } from './ProgramBuilder';
-import { GLRenderState } from './GLRenderState';
+import { Renderer, RunningState } from './renderer/Renderer';
+import { check } from './utils/GLUtils';
+import { ProgramBuilder } from './shader/ProgramBuilder';
+import { GLRenderState } from './renderer/GLRenderState';
 import { VertexArrayBuilder } from './VertexArrayBuilder';
 import { BufferTarget, BufferUsage } from './GLEnums';
-import { createTexture, DataTextureConfig, GLTexture, ImageTextureConfig, PBOTextureConfig } from './GLTexture';
-import { ProgramUniformsFactory, uniformsFactory } from './ProgramUniform';
+import { createTexture, DataTextureConfig, GLTexture, ImageTextureConfig, PBOTextureConfig } from './texture/GLTexture';
 import {GLFrameBuffer} from "./GLFrameBuffer";
 
 export class GLContext {
@@ -14,8 +13,6 @@ export class GLContext {
   readonly glState: GLRenderState;
 
   private _frames = 0;
-  private readonly _resizeObserver = new ResizeObserver(() => this.onresize());
-
   private _renderer: Renderer = new NoopRenderer();
 
   private _runningState?: DefaultRunningState;
@@ -31,7 +28,8 @@ export class GLContext {
     this.glState = new GLRenderState(this.gl);
 
     this.render = this.render.bind(this);
-    this._resizeObserver.observe(this.canvas);
+    this.onresize = this.onresize.bind(this);
+    window.addEventListener('resize', this.onresize);
     this.onresize();
   }
 
@@ -118,14 +116,10 @@ export class GLContext {
     return frames;
   }
 
-  programUniformsFactory(program: WebGLProgram): ProgramUniformsFactory {
-    return uniformsFactory(this, program);
-  }
-
   destroy(): void {
     this.running = false;
     this._renderer.delete && this._renderer.delete();
-    this._resizeObserver.unobserve(this.canvas);
+    window.removeEventListener('resize', this.onresize);
   }
 
   private render(dt: number): void {

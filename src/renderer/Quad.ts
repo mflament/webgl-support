@@ -1,4 +1,4 @@
-import { Renderer, RunningState } from '../Renderer';
+import { Renderer, RunningState } from './Renderer';
 import { GLContext } from '../GLContext';
 import { IndexType, FloatPointerType } from '../GLEnums';
 

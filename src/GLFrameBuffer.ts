@@ -1,5 +1,5 @@
-import {GLTexture} from './GLTexture';
-import {check} from './GLUtils';
+import {GLTexture} from './texture/GLTexture';
+import {check} from './utils/GLUtils';
 import {GLContext} from './GLContext';
 
 export class GLFrameBuffer {

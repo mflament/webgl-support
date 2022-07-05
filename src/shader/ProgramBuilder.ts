@@ -1,5 +1,5 @@
-import { check } from './GLUtils';
-import { VaryingBufferMode } from './GLEnums';
+import { check } from '../utils/GLUtils';
+import { VaryingBufferMode } from '../GLEnums';
 
 export class ProgramBuilder {
   private readonly _handle: WebGLProgram;

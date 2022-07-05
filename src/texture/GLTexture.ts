@@ -1,4 +1,4 @@
-import { GLContext } from './GLContext';
+import { GLContext } from '../GLContext';
 import {
   InternalFormat,
   PixelStoreParameter,
@@ -8,8 +8,8 @@ import {
   TextureMinFilter,
   TextureParameter,
   TextureWrappingMode
-} from './GLEnums';
-import { check } from './GLUtils';
+} from '../GLEnums';
+import { check } from '../utils/GLUtils';
 
 export interface GLTexture {
   readonly texture: WebGLTexture;

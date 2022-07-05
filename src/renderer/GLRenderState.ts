@@ -1,5 +1,5 @@
-import { BufferTarget } from './GLEnums';
-import { GLTexture, isGLTexture } from './GLTexture';
+import { BufferTarget } from '../GLEnums';
+import { GLTexture, isGLTexture } from '../texture/GLTexture';
 
 export class GLRenderState {
   private _program: WebGLProgram | null = null;

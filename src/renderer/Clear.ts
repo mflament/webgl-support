@@ -1,4 +1,4 @@
-import { Renderer, RunningState } from '../Renderer';
+import { Renderer, RunningState } from './Renderer';
 
 export type Color = [number, number, number, number];
 
