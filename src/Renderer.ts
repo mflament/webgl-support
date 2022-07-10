@@ -7,9 +7,18 @@ export interface RunningState {
    *  seconds elapsed since running
    */
   readonly time: number;
+  /**
+   * rendered frames
+   */
+  readonly frames: number;
+  /**
+   *  FPS
+   */
+  readonly fps: number;
 }
 
 export interface Renderer {
+
   readonly program?: WebGLProgram;
 
   render(state: RunningState): void;
@@ -17,4 +26,5 @@ export interface Renderer {
   resized?: (width: number, height: number) => void;
 
   delete?: () => void;
+
 }

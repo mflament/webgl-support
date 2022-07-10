@@ -5,7 +5,7 @@ export * from './GLRenderState';
 export * from './GLTexture';
 export * from './GLUtils';
 export * from './GLMath';
-export * from './ProgramBuilder';
+export * from './ProgramUtils';
 export * from './ProgramUniform';
 export * from './Renderer';
 export * from './renderers/clear';
