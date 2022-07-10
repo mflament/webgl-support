@@ -1,6 +1,6 @@
-import {GLTexture} from './GLTexture';
-import {check} from './GLUtils';
-import {GLContext} from './GLContext';
+import {GLTexture} from '../texture/GLTexture';
+import {check} from '../utils/GLUtils';
+import {GLContext} from '../GLContext';
 
 export class GLFrameBuffer {
     private readonly frameBuffer: WebGLFramebuffer;

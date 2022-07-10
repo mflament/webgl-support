@@ -1,16 +1,16 @@
-import {Renderer, RunningState} from './Renderer';
-import {check} from './GLUtils';
-import {GLRenderState} from './GLRenderState';
-import {VertexArrayBuilder} from './VertexArrayBuilder';
+import {Renderer, RunningState} from './render/Renderer';
+import {check} from './utils/GLUtils';
+import {GLState} from './GLState';
+import {VertexArrayBuilder} from './buffers/VertexArrayBuilder';
 import {BufferTarget, BufferUsage} from './GLEnums';
-import {createTexture, DataTextureConfig, GLTexture, ImageTextureConfig, PBOTextureConfig} from './GLTexture';
-import {ProgramUniformsFactory, uniformsFactory} from './ProgramUniform';
-import {GLFrameBuffer} from "./GLFrameBuffer";
+import {createTexture, DataTextureConfig, GLTexture, ImageTextureConfig, PBOTextureConfig} from './texture/GLTexture';
+import {ProgramUniformsFactory, uniformsFactory} from './uniform/ProgramUniform';
+import {GLFrameBuffer} from "./buffers/GLFrameBuffer";
 
 export class GLContext {
     readonly canvas: HTMLCanvasElement;
     readonly gl: WebGL2RenderingContext;
-    readonly glState: GLRenderState;
+    readonly glState: GLState;
 
     private readonly _resizeObserver = new ResizeObserver(() => this.onresize());
 
@@ -28,7 +28,7 @@ export class GLContext {
         }
         this.canvas = canvas;
         this.gl = check(this.canvas.getContext('webgl2'), 'webgl2 context');
-        this.glState = new GLRenderState(this.gl);
+        this.glState = new GLState(this.gl);
 
         this._resizeObserver.observe(this.canvas);
         this.onresize();

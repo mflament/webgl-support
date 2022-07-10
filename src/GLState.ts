@@ -1,7 +1,7 @@
 import { BufferTarget } from './GLEnums';
-import { GLTexture, isGLTexture } from './GLTexture';
+import { GLTexture, isGLTexture } from './texture/GLTexture';
 
-export class GLRenderState {
+export class GLState {
   private _program: WebGLProgram | null = null;
   private _buffers: { [target: number]: WebGLBuffer | null } = {};
   private _vertexArray: WebGLVertexArrayObject | null = null;

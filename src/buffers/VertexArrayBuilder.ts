@@ -1,4 +1,4 @@
-import {IntPointerType, FloatPointerType} from './GLEnums';
+import {IntPointerType, FloatPointerType} from '../GLEnums';
 
 export class VertexArrayBuilder {
     private attributeCount = 0;

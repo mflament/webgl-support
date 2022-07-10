@@ -1,5 +1,5 @@
 import {mat4, ReadonlyVec2, vec3, vec4} from 'gl-matrix';
-import {toRad} from "../GLMath";
+import {toRad} from "../utils/GLMath";
 
 export interface Ray {
     readonly origin: vec3,

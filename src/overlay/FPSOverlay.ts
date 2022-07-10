@@ -1,10 +1,11 @@
-import {GLContext} from "./GLContext";
+import {GLContext} from "../GLContext";
 
 export class FPSOverlay {
     readonly element: HTMLDivElement;
 
     private _toggleKey?: string = 'f';
     private _toggleListener?: (e: KeyboardEvent) => void;
+    private readonly _intervalId: number;
 
     constructor(readonly context: GLContext) {
         const element = document.createElement('div');
@@ -22,14 +23,12 @@ export class FPSOverlay {
         this.element = element;
         document.body.append(element);
 
-        const schedule = () => window.setTimeout(updateFPS, 1000, performance.now());
-        const updateFPS = (start: number) => {
-            const now = performance.now();
-            const elapsedSec = (now - start) / 1000;
-            element.textContent = (context.flushFrames() / elapsedSec).toFixed(0);
-            schedule();
-        }
-        schedule();
+        const updateFPS = () => element.textContent = context.runingState.fps.toFixed(0)
+        this._intervalId = self.setInterval(() => updateFPS, 1000);
+    }
+
+    destroy(): void {
+        self.clearInterval(this._intervalId);
     }
 
     get visible(): boolean {
