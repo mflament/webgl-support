@@ -6,7 +6,6 @@
     "node_modules/**", "**/*.spec.ts"
   ],
   "compilerOptions": {
-    "baseUrl": "./src",
     "outDir": "dist/",
     "target": "ES2021",
     "module": "ES2020",

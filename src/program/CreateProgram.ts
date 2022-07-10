@@ -14,16 +14,26 @@ export class ProgramError {
     }
 }
 
-export class ProgramResult {
-    constructor(readonly params: ProgramParams,
-                readonly program?: WebGLProgram,
-                readonly vsError?: ProgramError,
-                readonly fsError?: ProgramError,
-                readonly programError?: ProgramError) {
+export class ProgramResult extends Error {
+    private constructor(message: string,
+                        readonly params: ProgramParams,
+                        readonly program?: WebGLProgram,
+                        readonly vsError?: ProgramError,
+                        readonly fsError?: ProgramError,
+                        readonly programError?: ProgramError) {
+        super(message);
+    }
+
+    static create(partialResult: Partial<ProgramResult> & Pick<ProgramResult, 'params'>): ProgramResult {
+        const lines = ["Error building program"];
+        if (partialResult.vsError?.log) lines.push(partialResult.vsError.log)
+        if (partialResult.fsError?.log) lines.push(partialResult.fsError.log)
+        if (partialResult.programError?.log) lines.push(partialResult.programError.log)
+        return new ProgramResult(lines.join("\n"), partialResult.params, partialResult.program, partialResult.vsError, partialResult.fsError, partialResult.programError);
     }
 }
 
-export function createProgram(gl: WebGL2RenderingContext, params: ProgramParams): ProgramResult {
+export function createProgram(gl: WebGL2RenderingContext, params: ProgramParams): WebGLProgram {
     if (!params.vertexShader) throw new Error('No vertex shader');
     if (!params.fragmenShader) throw new Error('No fragment shader');
 
@@ -37,7 +47,7 @@ export function createProgram(gl: WebGL2RenderingContext, params: ProgramParams)
         if (!vsError) gl.deleteShader(vs);
         if (!fsError) gl.deleteShader(fs);
         gl.deleteProgram(program);
-        return new ProgramResult(params, undefined, vsError, fsError, undefined);
+        throw ProgramResult.create({params, vsError, fsError});
     }
 
     [vs, fs].forEach(shader => {
@@ -53,9 +63,9 @@ export function createProgram(gl: WebGL2RenderingContext, params: ProgramParams)
     if (!status) {
         const log = gl.getProgramInfoLog(program);
         gl.deleteProgram(program);
-        return new ProgramResult(params, undefined, undefined, undefined, new ProgramError(status, log));
+        throw ProgramResult.create({params, programError: new ProgramError(status, log)});
     }
-    return new ProgramResult(params, program);
+    return program;
 }
 
 function createShader(gl: WebGL2RenderingContext, source: string, type: number): WebGLShader | ProgramError {
