@@ -1,4 +1,4 @@
-import {GLContext, ProgramUniforms, QuadRenderer, UniformsIntrospector} from "../src";
+import {generateStructsClasses, GLContext, QuadRenderer, UniformsIntrospector} from "../src/index";
 
 // language=glsl
 const VS = `
@@ -19,40 +19,31 @@ const FS = `
     precision highp float;
     precision highp sampler2D;
 
-    uniform vec3 uColor;
-
-    struct Shape {
-        vec3 positon;
-        vec4 rotation;
-        vec4 color;
+    struct Channel {
+        float time;// channel playback time (in seconds)
+        vec3 resolution;// channel resolution (in pixels)
     };
 
-    struct OtherStruct {
-        mat4 world;
-        mat4 invWorld;
-        mat4 matrices[2];
-        Shape shape;
+    layout(std140) uniform uPipeline {
+        vec3      iResolution;// viewport resolution (in pixels)
+        float     iTime;// shader playback time (in seconds)
+        float     iTimeDelta;// render time (in seconds)
+        int       iFrame;// shader playback frame
+        vec4      iMouse;// mouse pixel coords. xy: current (if MLB down), zw: click
+        vec4      iDate;// (year, month, day, time in seconds)
+        float     iSampleRate;// sound sample rate (i.e., 44100)
+        Channel   iChannels[4];
     };
+    uniform sampler2D iChannel0;// input channel. XX = 2D/Cube
+    uniform sampler2D iChannel1;// input channel. XX = 2D/Cube
+    uniform sampler2D iChannel3;// input channel. XX = 2D/Cube
+    uniform sampler2D iChannel4;// input channel. XX = 2D/Cube
 
-    layout(std140) uniform uBlock {
-        uvec2 uv2;
-        vec3 v3;
-        ivec4 iv4;
-        Shape shapes[5];
-        Shape nextShapes[3];
-        ivec2 shapesCount;
-        OtherStruct otherStructs[2];
-    };
-
-    layout(std140) uniform uBlock2{
-        OtherStruct otherOtherStructs[2];
-    };
-    
     in vec2 uv;
     out vec4 color;
-    
+
     void main() {
-        color = vec4(v3, 1.0);
+        color = vec4(1.0);
     }
 `
 
@@ -68,12 +59,26 @@ const glState = context.glState;
 const quad = new QuadRenderer(context, FS, VS);
 const program = quad.program;
 
-glState.useProgram(program);
-const definitions = new UniformsIntrospector(gl).introspect(program);
-console.log(definitions.format());
-
-const models = ProgramUniforms.create(definitions);
-console.log(models);
-
-// context.renderer = quad;
-// context.toggle();
+// glState.useProgram(program);
+// const definitions = new UniformsIntrospector(gl).introspect(program);
+// console.log(definitions.format());
+//
+// const models = definitions.createModel();
+// console.log(models);
+//
+// // context.renderer = quad;
+// // context.toggle();
+//
+// const pipelineUniformOffsets = {
+//     iResolution: -1,
+//     iTime: -1,
+//     iTimeDelta: -1,
+//     iFrame: -1,
+//     iMouse: -1,
+//     iDate: -1,
+//     iSampleRate: -1,
+//     iChannels: -1,
+// };
+//
+// const ts = generateStructsClasses(models);
+// console.log(ts);

@@ -4,11 +4,11 @@ export interface RunningState {
    */
   readonly dt: number;
   /**
-   *  seconds elapsed since running
+   *  seconds elapsed since unpaused
    */
   readonly time: number;
   /**
-   * rendered frames
+   * rendered frames since unpaused
    */
   readonly frames: number;
   /**

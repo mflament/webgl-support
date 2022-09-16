@@ -1,3 +1,5 @@
+import {vec2} from "gl-matrix";
+
 const FLOAT32_BYTES = 4;
 const INT32_BYTES = 4;
 
@@ -5,7 +7,7 @@ export class UniformBlock {
     private readonly dataView: DataView;
     private readonly glBuffer: WebGLBuffer;
     private _size: number;
-    dirty = false;
+    private _updateRange: vec2 = [Number.MAX_VALUE, Number.MIN_VALUE];
 
     constructor(readonly gl: WebGL2RenderingContext, readonly blockBinding: number, private readonly buffer: Uint8Array) {
         const glBuffer = gl.createBuffer();
@@ -18,6 +20,10 @@ export class UniformBlock {
         gl.bindBufferBase(gl.UNIFORM_BUFFER, blockBinding, this.glBuffer);
         this._size = buffer.length;
         this.dataView = new DataView(this.buffer.buffer)
+    }
+
+    delete(): void {
+        this.gl.deleteBuffer(this.glBuffer);
     }
 
     get size(): number {
@@ -34,29 +40,29 @@ export class UniformBlock {
 
     setFloat(byteOffset: number, value: number): this {
         this.dataView.setFloat32(byteOffset, value, true);
-        this.dirty = true;
+        this.setUpdateRange(byteOffset, FLOAT32_BYTES);
         return this;
     }
 
     setFloats(dstOffset: number, data: ArrayLike<number>, srcOffset = 0, length = data.length): this {
-        for (let i = srcOffset; i < length; i++, dstOffset += FLOAT32_BYTES) {
-            this.dataView.setFloat32(dstOffset, data[srcOffset]);
+        for (let i = srcOffset, j = dstOffset; i < length; i++, j += FLOAT32_BYTES) {
+            this.dataView.setFloat32(j, data[i]);
         }
-        this.dirty = true;
+        this.setUpdateRange(dstOffset, length * FLOAT32_BYTES);
         return this;
     }
 
     setInt(byteOffset: number, value: number): this {
         this.dataView.setInt32(byteOffset, value, true);
-        this.dirty = true;
+        this.setUpdateRange(byteOffset, INT32_BYTES);
         return this;
     }
 
     setInts(dstOffset: number, data: ArrayLike<number>, srcOffset = 0, length = data.length): this {
-        for (let i = srcOffset; i < length; i++, dstOffset += FLOAT32_BYTES) {
-            this.dataView.setInt32(dstOffset, data[srcOffset]);
+        for (let i = srcOffset, j = dstOffset; i < length; i++, j += FLOAT32_BYTES) {
+            this.dataView.setInt32(j, data[i]);
         }
-        this.dirty = true;
+        this.setUpdateRange(dstOffset, length * INT32_BYTES);
         return this;
     }
 
@@ -65,13 +71,20 @@ export class UniformBlock {
     }
 
     updateGlBuffer(force = false): void {
-        if (this.dirty || force) {
+        const [start, end] = force ? [0, this._size] : this._updateRange;
+        if (end > start) {
             const {gl, glBuffer, buffer} = this;
             gl.bindBuffer(gl.UNIFORM_BUFFER, glBuffer);
-            gl.bufferSubData(gl.UNIFORM_BUFFER, 0, buffer, 0, this._size);
+            gl.bufferSubData(gl.UNIFORM_BUFFER, start, buffer, start, end - start);
             gl.bindBuffer(gl.UNIFORM_BUFFER, null);
-            this.dirty = false;
+            vec2.set(this._updateRange, Number.MAX_VALUE, Number.MIN_VALUE);
         }
+    }
+
+    private setUpdateRange(offset: number, length: number): void {
+        const end = offset + length;
+        this._updateRange[0] = Math.min(offset, this._updateRange[0]);
+        this._updateRange[1] = Math.max(end, this._updateRange[1]);
     }
 
 }

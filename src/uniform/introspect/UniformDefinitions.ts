@@ -1,4 +1,6 @@
 import {UniformType} from "../../GLEnums";
+import {IProgramUniforms} from "./UniformModel";
+import {createUniformsModel} from "./UniformModelBuilder";
 
 export class UniformDefinitions implements Iterable<UniformDefinition> {
     private readonly definitions: UniformDefinition[] = [];
@@ -25,6 +27,9 @@ export class UniformDefinitions implements Iterable<UniformDefinition> {
         return blocks.join("\n");
     }
 
+    createModel(): IProgramUniforms {
+        return createUniformsModel(this);
+    }
 }
 
 export class UniformsIntrospector {

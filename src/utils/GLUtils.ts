@@ -31,3 +31,11 @@ export function nextPowerOfTwo(n: number): number {
   n |= n >> 16;
   return n + 1;
 }
+
+export const Array = {
+  remove<I = any, E extends I = I>(item: E, items: I[]): I[] {
+    const i = items.indexOf(item);
+    if (i >= 0) items.splice(i, 1);
+    return items;
+  }
+}

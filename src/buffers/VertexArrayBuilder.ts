@@ -87,9 +87,9 @@ export class VertexArrayBuilder {
         const stride = this.offset;
         for (const pa of this.pointerAttributes) {
             if (pa instanceof FloatPointerAttribute) {
-                gl.vertexAttribPointer(pa.index, pa.size, pa.type, pa.normalized, stride, pa.offset);
+                gl.vertexAttribPointer(pa.index, pa.size, pa.compnentType, pa.normalized, stride, pa.offset);
             } else {
-                gl.vertexAttribIPointer(pa.index, pa.size, pa.type, stride, pa.offset);
+                gl.vertexAttribIPointer(pa.index, pa.size, pa.compnentType, stride, pa.offset);
             }
         }
         for (let i = 0; i < this.attributeCount; i++) {
@@ -99,33 +99,26 @@ export class VertexArrayBuilder {
 }
 
 abstract class AbstractPointerAttribute {
-    protected constructor(readonly attributeType: 'float' | 'int', readonly index: number, readonly size: number, readonly offset: number) {
+    protected constructor(readonly attributeType: 'float' | 'int',
+                          readonly index: number, readonly size: number, readonly offset: number,
+                          readonly componentBytes: number) {
     }
 
     get attributeBytes(): number {
         return this.size * this.componentBytes;
     }
 
-    abstract get componentBytes(): number;
 }
 
 class FloatPointerAttribute extends AbstractPointerAttribute {
-    constructor(index: number, size: number, readonly type: FloatPointerType, readonly normalized: boolean, offset: number) {
-        super('float', index, size, offset);
-    }
-
-    get componentBytes(): number {
-        return getComponentBytes(this.type);
+    constructor(index: number, size: number, readonly compnentType: FloatPointerType, readonly normalized: boolean, offset: number) {
+        super('float', index, size, offset, getComponentBytes(compnentType));
     }
 }
 
 class IntPointerAttribute extends AbstractPointerAttribute {
-    constructor(index: number, size: number, readonly type: IntPointerType, offset: number) {
-        super('int', index, size, offset);
-    }
-
-    get componentBytes(): number {
-        return getComponentBytes(this.type);
+    constructor(index: number, size: number, readonly compnentType: IntPointerType, offset: number) {
+        super('int', index, size, offset, getComponentBytes(compnentType));
     }
 }
 
@@ -143,6 +136,6 @@ function getComponentBytes(type: number): number {
         case WebGL2RenderingContext.FLOAT:
             return 4;
         default:
-            throw new Error('Invalid type ' + type);
+            throw new Error('Invalid compnentType ' + type);
     }
 }

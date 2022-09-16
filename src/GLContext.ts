@@ -1,5 +1,5 @@
 import {Renderer, RunningState} from './render/Renderer';
-import {check} from './utils/GLUtils';
+import {Array, check} from './utils/GLUtils';
 import {GLState} from './GLState';
 import {VertexArrayBuilder} from './buffers/VertexArrayBuilder';
 import {BufferTarget, BufferUsage} from './GLEnums';
@@ -7,44 +7,95 @@ import {createTexture, DataTextureConfig, GLTexture, ImageTextureConfig, PBOText
 import {ProgramUniformsFactory, uniformsFactory} from './uniform/ProgramUniform';
 import {GLFrameBuffer} from "./buffers/GLFrameBuffer";
 
+type GLContextEventType = 'resize' | 'render';
+
+export interface GLContextEvent {
+    readonly source: GLContext;
+    readonly type: GLContextEventType;
+}
+
+type GLContextEventListener = (e: GLContextEvent) => void;
+
+export interface ObserveSizeProps {
+    element: HTMLElement,
+    debounce?: number | boolean;
+}
+
+export interface GLContextProps {
+    canvas?: HTMLCanvasElement;
+}
+
 export class GLContext {
     readonly canvas: HTMLCanvasElement;
     readonly gl: WebGL2RenderingContext;
     readonly glState: GLState;
 
-    private readonly _resizeObserver = new ResizeObserver(() => this.onresize());
-
     private _renderer: Renderer = new NoopRenderer();
 
     private readonly _runningState = new DefaultRunningState();
-    private _resized = false;
     private _destroyed = false;
 
-    constructor(canvas?: HTMLCanvasElement) {
+    private readonly _listeners = {
+        'resize': [] as GLContextEventListener[],
+        'render': [] as GLContextEventListener[]
+    };
+
+    constructor(props?: GLContextProps) {
+        let canvas = props?.canvas;
         if (!canvas) {
             canvas = document.createElement('canvas');
             canvas.id = 'glcanvas';
             document.body.append(canvas);
         }
+
         this.canvas = canvas;
         this.gl = check(this.canvas.getContext('webgl2'), 'webgl2 context');
         this.glState = new GLState(this.gl);
 
-        this._resizeObserver.observe(this.canvas);
-        this.onresize();
-
         const state = this._runningState;
-        const render = (dt: number): void => {
+        const render = (time: number): void => {
             if (this._destroyed)
                 return;
-            if (!state.paused || this._resized) {
-                !state.paused && state.update(dt);
-                this._renderer.render(state);
-                this._resized = false;
+
+            let needRedraw = this.updateSize();
+            if (!this.paused) {
+                state.update(time);
+                needRedraw = true;
             }
+
+            if (needRedraw) {
+                this._renderer.render(state);
+                this.fireEvent('render');
+            }
+
+            state.addFrame(time);
             requestAnimationFrame(render);
         }
         requestAnimationFrame(render);
+    }
+
+    addEventListener(type: GLContextEventType, listener: GLContextEventListener): () => void {
+        this._listeners[type].push(listener);
+        return () => this.removeEventListener(type, listener);
+    }
+
+    removeEventListener(type: GLContextEventType, listener: GLContextEventListener): void {
+        Array.remove(listener, this._listeners[type]);
+    }
+
+    private updateSize(force = false): boolean {
+        const {canvas, gl} = this;
+        if (!force && canvas.width === canvas.clientWidth && canvas.height === canvas.clientHeight)
+            return false;
+
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+        gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+
+        this.fireEvent('resize');
+        this._renderer?.resized && this._renderer?.resized(canvas.width, canvas.height);
+
+        return true;
     }
 
     get runingState(): RunningState {
@@ -74,10 +125,6 @@ export class GLContext {
 
     toggle(): void {
         this._runningState.paused = !this._runningState.paused;
-    }
-
-    reset(): void {
-        this._runningState.reset();
     }
 
     createBuffer(target: BufferTarget, factory: (gl: WebGL2RenderingContext, buffer: WebGLBuffer) => void): WebGLBuffer {
@@ -141,19 +188,17 @@ export class GLContext {
 
     destroy(): void {
         this._renderer.delete && this._renderer.delete();
-        this._resizeObserver.unobserve(this.canvas);
         this._destroyed = true;
     }
 
-    private onresize(): void {
-        const {gl, canvas} = this;
-        const {clientWidth, clientHeight} = canvas;
-        canvas.width = clientWidth;
-        canvas.height = clientHeight;
-        gl.viewport(0, 0, clientWidth, clientHeight);
-        this._renderer.resized && this._renderer.resized(clientWidth, clientHeight);
-        this._resized = true;
+    private fireEvent(type: GLContextEventType): void {
+        const listeners = this._listeners[type];
+        if (listeners.length > 0) {
+            const event: GLContextEvent = {source: this, type: type};
+            listeners.forEach(l => l(event));
+        }
     }
+
 }
 
 class NoopRenderer implements Renderer {
@@ -163,12 +208,19 @@ class NoopRenderer implements Renderer {
 }
 
 class DefaultRunningState implements RunningState {
-    private startTime?: number;
-    private lastTime = 0;
-    private _paused = true;
+
+    private readonly startTime = performance.now();
+    private _lastFpsReset = this.startTime;
+
     private _frames = 0;
+    private _fps = 0;
+
+    private _lastTime?: number;
     private _time = 0;
     private _dt = 0;
+
+    constructor() {
+    }
 
     get time(): number {
         return this._time;
@@ -179,12 +231,18 @@ class DefaultRunningState implements RunningState {
     }
 
     get paused(): boolean {
-        return this._paused;
+        return this._lastTime === undefined;
     }
 
     set paused(p: boolean) {
-        this._paused = p;
-        if (!this._paused) this.startTime = undefined;
+        if (p != this.paused) {
+            if (!p) {
+                this._time = 0;
+                this._lastTime = undefined;
+            } else {
+                this._lastTime = performance.now();
+            }
+        }
     }
 
     get frames(): number {
@@ -192,29 +250,24 @@ class DefaultRunningState implements RunningState {
     }
 
     get fps(): number {
-        if (this._time === 0)
-            return 0;
-        return this._frames / this._time;
-    }
-
-    reset(): void {
-        this.startTime = undefined;
-        this._frames = 0;
-        this._time = 0;
+        return this._fps;
     }
 
     update(now: number): void {
-        if (this.startTime === undefined) {
-            this.startTime = now;
-            this._dt = 0;
-        } else {
-            this._dt = (now - this.lastTime) / 1000;
-            this._time += this._dt;
-        }
-        this._frames++;
-        this.lastTime = now;
+        this._dt = (this._lastTime ? now - this._lastTime : 0) / 1000;
+        this._time += this._dt;
+        this._lastTime = now;
     }
 
+    addFrame(now: number): void {
+        const dt = (performance.now() - this._lastFpsReset) / 1000;
+        if (dt > 1) {
+            this._fps = this._frames / dt;
+            this._frames = 0;
+            this._lastFpsReset = now;
+        }
+        this._frames++;
+    }
 }
 
 function isArrayBufferView(obj: any): obj is ArrayBufferView {
