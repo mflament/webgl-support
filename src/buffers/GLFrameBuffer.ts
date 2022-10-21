@@ -23,7 +23,6 @@ export class GLFrameBuffer {
 
         const {width, height} = targets[0];
 
-        const vp = gl.getParameter(gl.VIEWPORT);
         gl.viewport(0, 0, width, height);
 
         renderTexture(width, height);
@@ -32,8 +31,6 @@ export class GLFrameBuffer {
             gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, null, 0);
         }
         glState.bindFrameBuffer(null);
-
-        gl.viewport(vp[0], vp[1], vp[2], vp[3]);
     }
 
     delete(): void {

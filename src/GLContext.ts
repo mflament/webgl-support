@@ -1,20 +1,12 @@
-import {Renderer, RunningState} from './render/Renderer';
-import {Array, check} from './utils/GLUtils';
+import {Renderer, RenderState} from './render/Renderer';
+import {check} from './utils/GLUtils';
 import {GLState} from './GLState';
 import {VertexArrayBuilder} from './buffers/VertexArrayBuilder';
 import {BufferTarget, BufferUsage} from './GLEnums';
-import {createTexture, DataTextureConfig, GLTexture, ImageTextureConfig, PBOTextureConfig} from './texture/GLTexture';
+import {createTexture2D, DataTextureConfig, GLTexture, ImageTextureConfig, PBOTextureConfig} from './texture/GLTexture';
 import {ProgramUniformsFactory, uniformsFactory} from './uniform/ProgramUniform';
 import {GLFrameBuffer} from "./buffers/GLFrameBuffer";
-
-type GLContextEventType = 'resize' | 'render';
-
-export interface GLContextEvent {
-    readonly source: GLContext;
-    readonly type: GLContextEventType;
-}
-
-type GLContextEventListener = (e: GLContextEvent) => void;
+import {CompiledProgram, programBuilder, ProgramBuilder, ProgramConfig} from "./program/ProgramBuilder";
 
 export interface ObserveSizeProps {
     element: HTMLElement,
@@ -22,7 +14,8 @@ export interface ObserveSizeProps {
 }
 
 export interface GLContextProps {
-    canvas?: HTMLCanvasElement;
+    canvas: HTMLCanvasElement;
+    createRenderer?: (glContext: GLContext) => Renderer;
 }
 
 export class GLContext {
@@ -30,101 +23,123 @@ export class GLContext {
     readonly gl: WebGL2RenderingContext;
     readonly glState: GLState;
 
-    private _renderer: Renderer = new NoopRenderer();
 
-    private readonly _runningState = new DefaultRunningState();
-    private _destroyed = false;
-
-    private readonly _listeners = {
-        'resize': [] as GLContextEventListener[],
-        'render': [] as GLContextEventListener[]
+    private _renderer?: Renderer;
+    private _lastUpdateTime?: number;
+    private readonly _renderState: RenderState = {
+        time: 0,
+        dt: 0,
+        frame: 0,
+        fps: 0,
+        paused: true,
+        reset: () => {
+            const rs = this._renderState;
+            rs.time = rs.dt = rs.frame = rs.fps = 0;
+            if (rs.paused) this.render();
+        }
     };
+    private readonly _program: ProgramBuilder;
 
-    constructor(props?: GLContextProps) {
-        let canvas = props?.canvas;
-        if (!canvas) {
-            canvas = document.createElement('canvas');
-            canvas.id = 'glcanvas';
-            document.body.append(canvas);
-        }
-
+    constructor(props: GLContextProps) {
+        const {canvas, createRenderer} = props;
+        this.reset = this.reset.bind(this);
+        this.update = this.update.bind(this);
         this.canvas = canvas;
-        this.gl = check(this.canvas.getContext('webgl2'), 'webgl2 context');
+        this.gl = check(canvas.getContext('webgl2'), 'webgl2 context');
         this.glState = new GLState(this.gl);
-
-        const state = this._runningState;
-        const render = (time: number): void => {
-            if (this._destroyed)
-                return;
-
-            let needRedraw = this.updateSize();
-            if (!this.paused) {
-                state.update(time);
-                needRedraw = true;
-            }
-
-            if (needRedraw) {
-                this._renderer.render(state);
-                this.fireEvent('render');
-            }
-
-            state.addFrame(time);
-            requestAnimationFrame(render);
-        }
-        requestAnimationFrame(render);
+        this._program = programBuilder(this);
+        this._renderer = createRenderer && createRenderer(this);
+        this.resized();
     }
 
-    addEventListener(type: GLContextEventType, listener: GLContextEventListener): () => void {
-        this._listeners[type].push(listener);
-        return () => this.removeEventListener(type, listener);
+    program(config: ProgramConfig): Promise<WebGLProgram> {
+        return this._program(config).then(p => {
+            p.deleteShaders();
+            return p.program;
+        });
     }
 
-    removeEventListener(type: GLContextEventType, listener: GLContextEventListener): void {
-        Array.remove(listener, this._listeners[type]);
+    compile(config: ProgramConfig): Promise<CompiledProgram> {
+        return this._program(config);
     }
 
-    private updateSize(force = false): boolean {
+    resized(): boolean {
         const {canvas, gl} = this;
-        if (!force && canvas.width === canvas.clientWidth && canvas.height === canvas.clientHeight)
+        const {clientWidth: width, clientHeight: height} = this.canvas;
+        if (canvas.width === width && canvas.height === height)
             return false;
-
-        canvas.width = canvas.clientWidth;
-        canvas.height = canvas.clientHeight;
-        gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-
-        this.fireEvent('resize');
-        this._renderer?.resized && this._renderer?.resized(canvas.width, canvas.height);
-
+        canvas.width = width;
+        canvas.height = height;
+        const renderer = this._renderer;
+        if (renderer) {
+            setTimeout(() => {
+                gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+                this.render();
+            });
+        }
         return true;
     }
 
-    get runingState(): RunningState {
-        return this._runningState;
+    private update(now: number) {
+        const rs = this._renderState;
+        if (rs.paused)
+            return;
+
+        const lastUpdateTime = this._lastUpdateTime || now;
+        rs.dt = (now - lastUpdateTime) / 1000;
+        rs.time += rs.dt;
+        rs.fps = rs.time > 0 ? rs.frame / rs.time : 0;
+
+        this.render();
+
+        rs.frame++;
+        this._lastUpdateTime = now;
+        requestAnimationFrame(this.update);
     }
 
-    get renderer(): Renderer {
+    private render(): void {
+        this._renderer?.render(this._renderState);
+    }
+
+    get renderer(): Renderer | undefined {
         return this._renderer;
     }
 
-    set renderer(renderer: Renderer) {
-        this._renderer.delete && this._renderer.delete();
+    set renderer(renderer: Renderer | undefined) {
+        this._renderer?.delete && this._renderer.delete();
         this._renderer = renderer;
     }
 
     get paused(): boolean {
-        return this._runningState.paused;
-    }
-
-    pause(): void {
-        this._runningState.paused = true;
+        return this._renderState.paused;
     }
 
     resume(): void {
-        this._runningState.paused = false;
+        const rs = this._renderState;
+        if (rs.paused) {
+            rs.paused = false;
+            this._lastUpdateTime = undefined;
+            requestAnimationFrame(this.update);
+        }
+    }
+
+    pause(): void {
+        const rs = this._renderState;
+        if (!rs.paused)
+            rs.paused = true;
     }
 
     toggle(): void {
-        this._runningState.paused = !this._runningState.paused;
+        if (this.paused) this.resume();
+        else this.pause();
+    }
+
+    reset(): void {
+        this._renderState.reset();
+    }
+
+    get fps(): number {
+        return this._renderState.frame;
     }
 
     createBuffer(target: BufferTarget, factory: (gl: WebGL2RenderingContext, buffer: WebGLBuffer) => void): WebGLBuffer {
@@ -170,16 +185,12 @@ export class GLContext {
         return vao;
     }
 
-    createTexture(config: DataTextureConfig | ImageTextureConfig | PBOTextureConfig): GLTexture {
-        return createTexture(this, config);
+    createTexture2D(config: DataTextureConfig | ImageTextureConfig | PBOTextureConfig): GLTexture {
+        return createTexture2D(this, config);
     }
 
     createFrameBuffer(): GLFrameBuffer {
         return new GLFrameBuffer(this);
-    }
-
-    get fps(): number {
-        return this._runningState.fps;
     }
 
     programUniformsFactory(program: WebGLProgram): ProgramUniformsFactory {
@@ -187,87 +198,10 @@ export class GLContext {
     }
 
     destroy(): void {
-        this._renderer.delete && this._renderer.delete();
-        this._destroyed = true;
+        this._lastUpdateTime = undefined;
+        this._renderer?.delete && this._renderer.delete();
     }
 
-    private fireEvent(type: GLContextEventType): void {
-        const listeners = this._listeners[type];
-        if (listeners.length > 0) {
-            const event: GLContextEvent = {source: this, type: type};
-            listeners.forEach(l => l(event));
-        }
-    }
-
-}
-
-class NoopRenderer implements Renderer {
-    render(): void {
-        // nop
-    }
-}
-
-class DefaultRunningState implements RunningState {
-
-    private readonly startTime = performance.now();
-    private _lastFpsReset = this.startTime;
-
-    private _frames = 0;
-    private _fps = 0;
-
-    private _lastTime?: number;
-    private _time = 0;
-    private _dt = 0;
-
-    constructor() {
-    }
-
-    get time(): number {
-        return this._time;
-    }
-
-    get dt(): number {
-        return this._dt;
-    }
-
-    get paused(): boolean {
-        return this._lastTime === undefined;
-    }
-
-    set paused(p: boolean) {
-        if (p != this.paused) {
-            if (!p) {
-                this._time = 0;
-                this._lastTime = undefined;
-            } else {
-                this._lastTime = performance.now();
-            }
-        }
-    }
-
-    get frames(): number {
-        return this._frames;
-    }
-
-    get fps(): number {
-        return this._fps;
-    }
-
-    update(now: number): void {
-        this._dt = (this._lastTime ? now - this._lastTime : 0) / 1000;
-        this._time += this._dt;
-        this._lastTime = now;
-    }
-
-    addFrame(now: number): void {
-        const dt = (performance.now() - this._lastFpsReset) / 1000;
-        if (dt > 1) {
-            this._fps = this._frames / dt;
-            this._frames = 0;
-            this._lastFpsReset = now;
-        }
-        this._frames++;
-    }
 }
 
 function isArrayBufferView(obj: any): obj is ArrayBufferView {

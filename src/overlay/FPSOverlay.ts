@@ -23,7 +23,7 @@ export class FPSOverlay {
         this.element = element;
         document.body.append(element);
 
-        const updateFPS = () => element.textContent = context.runingState.fps.toFixed(0)
+        const updateFPS = () => element.textContent = context.fps.toFixed(0)
         this._intervalId = self.setInterval(() => updateFPS, 1000);
     }
 

@@ -1,7 +1,6 @@
-import {Renderer, RunningState} from './Renderer';
+import {Renderer, RenderState} from './Renderer';
 import {GLContext} from '../GLContext';
-import {IndexType, FloatPointerType} from '../GLEnums';
-import {createProgram} from "../program/CreateProgram";
+import {FloatPointerType, IndexType} from '../GLEnums';
 
 // language=glsl
 const VERTEX_SHADER = `
@@ -23,34 +22,39 @@ const VERTEX_SHADER = `
 export class QuadRenderer implements Renderer {
     static readonly VS = VERTEX_SHADER;
 
-    readonly program: WebGLProgram;
-    private readonly quadBuffer: QuadBufferInstance;
+    readonly quadBuffer: QuadBuffer;
+    private _program?: WebGLProgram;
 
-    prepare?: (runningState: RunningState) => boolean;
+    prepare?: (runningState: RenderState) => boolean;
 
-    constructor(context: GLContext, fragmentShader: string, vertexShader?: string);
-    constructor(context: GLContext, program: WebGLProgram);
-    constructor(readonly context: GLContext, param: string | WebGLProgram, vertexShader = VERTEX_SHADER) {
-        if (typeof param === 'string') {
-            this.program = createProgram(this.context.gl, {fragmenShader: param, vertexShader: vertexShader});
-        } else {
-            this.program = param;
-        }
-        this.quadBuffer = QuadBuffer.acquire(context);
+    constructor(context: GLContext, fragmentShader: string, vertexShader?: string, quadBuffer?: QuadBuffer);
+    constructor(context: GLContext, program: WebGLProgram, quadBuffer?: QuadBuffer);
+    constructor(readonly context: GLContext, p0: string | WebGLProgram, p1?: string | QuadBuffer, quadBuffer?: QuadBuffer) {
+        if (typeof p0 === 'string') {
+            const vs = typeof p1 === "string" ? p1 : VERTEX_SHADER;
+            context.program({fs: p0, vs}).then(p => this._program = p);
+        } else
+            this._program = p0;
+
+        if (typeof p1 === "object")
+            quadBuffer = p1;
+        this.quadBuffer = quadBuffer || new QuadBuffer(context);
     }
 
-    render(runningState: RunningState): void {
-        const glState = this.context.glState;
-        glState.useProgram(this.program);
-        if (!this.prepare || this.prepare(runningState)) {
-            this.quadBuffer.render();
+    render(runningState: RenderState): void {
+        if (this._program) {
+            const glState = this.context.glState;
+            glState.useProgram(this._program);
+            if (!this.prepare || this.prepare(runningState)) {
+                this.quadBuffer.render();
+            }
         }
     }
 
     delete(): void {
         const gl = this.context.gl;
         this.quadBuffer.delete();
-        gl.deleteProgram(this.program);
+        this._program && gl.deleteProgram(this._program);
     }
 }
 
@@ -68,19 +72,13 @@ const INDICES = new Uint8Array([
     2, 3, 0
 ]);
 
-interface QuadBufferInstance {
-    render(): void;
 
-    delete(): void;
-}
-
-class QuadBuffer {
+export class QuadBuffer {
     private readonly vertexArray: WebGLVertexArrayObject;
     private readonly indexBuffer: WebGLBuffer;
     private readonly vertexBuffer: WebGLBuffer;
-    private ref = 0;
 
-    private constructor(readonly context: GLContext) {
+    constructor(readonly context: GLContext) {
         const state = context.glState;
         this.vertexBuffer = context.createVertexBuffer(VERTEX);
         state.bindVertexBuffer(this.vertexBuffer);
@@ -99,24 +97,11 @@ class QuadBuffer {
         gl.drawElements(gl.TRIANGLES, INDICES.length, IndexType.UNSIGNED_BYTE, 0);
     }
 
-    private static instance?: QuadBuffer;
-
-    static acquire(context: GLContext): QuadBufferInstance {
-        if (!QuadBuffer.instance) QuadBuffer.instance = new QuadBuffer(context);
-        const qb = QuadBuffer.instance;
-        qb.ref++;
-        return {
-            render: () => qb.render(),
-            delete() {
-                qb.ref--;
-                if (qb.ref === 0) {
-                    const gl = qb.context.gl;
-                    gl.deleteVertexArray(qb.vertexArray);
-                    gl.deleteBuffer(qb.vertexBuffer);
-                    gl.deleteBuffer(qb.indexBuffer);
-                    QuadBuffer.instance = undefined;
-                }
-            }
-        };
+    delete(): void {
+        const gl = this.context.gl;
+        gl.deleteVertexArray(this.vertexArray);
+        gl.deleteBuffer(this.vertexBuffer);
+        gl.deleteBuffer(this.indexBuffer);
     }
+
 }
