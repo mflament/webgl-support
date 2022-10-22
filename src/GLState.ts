@@ -1,5 +1,6 @@
 import {BufferTarget, TextureTarget} from './GLEnums';
-import {GLTexture, isGLTexture} from './texture/GLTexture';
+import {GLTexture} from './texture/GLTexture';
+import {isGLTexture} from "../test/dist/src";
 
 export class GLState {
     private _program: WebGLProgram | null = null;
@@ -81,11 +82,18 @@ export class GLState {
         return (unitTextures && unitTextures[target]) || null;
     }
 
-    bindTexture(target: TextureTarget, texture: WebGLTexture | GLTexture | null): WebGLTexture | null {
+    bindTexture(texture: GLTexture): WebGLTexture | null;
+    bindTexture(target: TextureTarget, texture: WebGLTexture | null): WebGLTexture | null;
+    bindTexture(targetOrTexture: TextureTarget | GLTexture, texture?: WebGLTexture | null): WebGLTexture | null {
         const {gl, _textures, _textureUnit} = this;
-
-        if (isGLTexture(texture))
-            texture = texture.texture;
+        let target;
+        if (typeof targetOrTexture === "object") {
+            target = targetOrTexture.target;
+            texture = targetOrTexture.texture;
+        } else {
+            target = targetOrTexture;
+            texture = isGLTexture(texture) ? texture.texture : texture || null;
+        }
 
         const actual = this.getTexture(target);
         if (actual !== texture) {

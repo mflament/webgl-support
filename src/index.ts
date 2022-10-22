@@ -17,3 +17,5 @@ export * from './render/QuadRenderer';
 export * from './camera/PerspectiveCamera';
 export * from './camera/OrbitControls';
 export * from './overlay/FPSOverlay';
+export * from "./render/RenderState";
+export * from "./texture/SamplerConfig";

@@ -1,12 +1,20 @@
-import {Renderer, RenderState} from './render/Renderer';
+import {Renderer} from './render/Renderer';
 import {check} from './utils/GLUtils';
 import {GLState} from './GLState';
 import {VertexArrayBuilder} from './buffers/VertexArrayBuilder';
 import {BufferTarget, BufferUsage} from './GLEnums';
-import {createTexture2D, DataTextureConfig, GLTexture, ImageTextureConfig, PBOTextureConfig} from './texture/GLTexture';
-import {ProgramUniformsFactory, uniformsFactory} from './uniform/ProgramUniform';
-import {GLFrameBuffer} from "./buffers/GLFrameBuffer";
-import {CompiledProgram, programBuilder, ProgramBuilder, ProgramConfig} from "./program/ProgramBuilder";
+import {CompiledProgram, ProgramBuilder, ProgramConfig} from "./program/ProgramBuilder";
+import {RenderState} from "./render/RenderState";
+import {
+    DataTexture3DConfig,
+    DataTextureConfig,
+    GLTexture,
+    GLTexture3D,
+    GLTextures,
+    ImageTextureConfig,
+    PBOTexture3DConfig,
+    PBOTextureConfig
+} from "./texture/GLTexture";
 
 export interface ObserveSizeProps {
     element: HTMLElement,
@@ -23,34 +31,92 @@ export class GLContext {
     readonly gl: WebGL2RenderingContext;
     readonly glState: GLState;
 
-
+    private _running = false;
     private _renderer?: Renderer;
+    private _resized = true;
+
+    private _renderedFrames = 0;
+    private _renderStartTime?: number;
+
     private _lastUpdateTime?: number;
-    private readonly _renderState: RenderState = {
+
+    private readonly _renderState: RenderState & { _absoluteTime: number } = {
         time: 0,
         dt: 0,
         frame: 0,
         fps: 0,
         paused: true,
-        reset: () => {
-            const rs = this._renderState;
-            rs.time = rs.dt = rs.frame = rs.fps = 0;
-            if (rs.paused) this.render();
-        }
+        _absoluteTime: 0
     };
     private readonly _program: ProgramBuilder;
+    private readonly _textures: GLTextures;
 
     constructor(props: GLContextProps) {
         const {canvas, createRenderer} = props;
-        this.reset = this.reset.bind(this);
-        this.update = this.update.bind(this);
+        this.renderLoop = this.renderLoop.bind(this);
         this.canvas = canvas;
         this.gl = check(canvas.getContext('webgl2'), 'webgl2 context');
         this.glState = new GLState(this.gl);
-        this._program = programBuilder(this);
+
+        this._program = ProgramBuilder(this);
+        this._textures = new GLTextures(this);
         this._renderer = createRenderer && createRenderer(this);
-        this.resized();
     }
+
+    get fps(): number {
+        return this._renderState.fps;
+    }
+
+    resize(): void {
+        this._resized = true;
+    }
+
+    get renderer(): Renderer | undefined {
+        return this._renderer;
+    }
+
+    set renderer(renderer: Renderer | undefined) {
+        this._renderer?.delete && this._renderer.delete();
+        this._renderer = renderer;
+        this._resized = true;
+    }
+
+    get running(): boolean {
+        return this._running;
+    }
+
+    set running(r: boolean) {
+        if (!this._running && r)
+            requestAnimationFrame(this.renderLoop);
+        this._running = r;
+    }
+
+    reset(): void {
+        const rs = this._renderState;
+        rs.dt = rs.frame = rs.time = rs._absoluteTime = 0;
+    }
+
+    get paused(): boolean {
+        return this._renderState.paused;
+    }
+
+    pause(): void {
+        this._renderState.paused = true;
+    }
+
+    resume(): void {
+        if (this.paused) {
+            this._renderState.paused = false;
+            this._lastUpdateTime = undefined;
+        }
+    }
+
+    toggle(): void {
+        if (this.paused) this.resume();
+        else this.pause();
+    }
+
+    //////// factories
 
     program(config: ProgramConfig): Promise<WebGLProgram> {
         return this._program(config).then(p => {
@@ -61,85 +127,6 @@ export class GLContext {
 
     compile(config: ProgramConfig): Promise<CompiledProgram> {
         return this._program(config);
-    }
-
-    resized(): boolean {
-        const {canvas, gl} = this;
-        const {clientWidth: width, clientHeight: height} = this.canvas;
-        if (canvas.width === width && canvas.height === height)
-            return false;
-        canvas.width = width;
-        canvas.height = height;
-        const renderer = this._renderer;
-        if (renderer) {
-            setTimeout(() => {
-                gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-                this.render();
-            });
-        }
-        return true;
-    }
-
-    private update(now: number) {
-        const rs = this._renderState;
-        if (rs.paused)
-            return;
-
-        const lastUpdateTime = this._lastUpdateTime || now;
-        rs.dt = (now - lastUpdateTime) / 1000;
-        rs.time += rs.dt;
-        rs.fps = rs.time > 0 ? rs.frame / rs.time : 0;
-
-        this.render();
-
-        rs.frame++;
-        this._lastUpdateTime = now;
-        requestAnimationFrame(this.update);
-    }
-
-    private render(): void {
-        this._renderer?.render(this._renderState);
-    }
-
-    get renderer(): Renderer | undefined {
-        return this._renderer;
-    }
-
-    set renderer(renderer: Renderer | undefined) {
-        this._renderer?.delete && this._renderer.delete();
-        this._renderer = renderer;
-    }
-
-    get paused(): boolean {
-        return this._renderState.paused;
-    }
-
-    resume(): void {
-        const rs = this._renderState;
-        if (rs.paused) {
-            rs.paused = false;
-            this._lastUpdateTime = undefined;
-            requestAnimationFrame(this.update);
-        }
-    }
-
-    pause(): void {
-        const rs = this._renderState;
-        if (!rs.paused)
-            rs.paused = true;
-    }
-
-    toggle(): void {
-        if (this.paused) this.resume();
-        else this.pause();
-    }
-
-    reset(): void {
-        this._renderState.reset();
-    }
-
-    get fps(): number {
-        return this._renderState.frame;
     }
 
     createBuffer(target: BufferTarget, factory: (gl: WebGL2RenderingContext, buffer: WebGLBuffer) => void): WebGLBuffer {
@@ -185,21 +172,74 @@ export class GLContext {
         return vao;
     }
 
-    createTexture2D(config: DataTextureConfig | ImageTextureConfig | PBOTextureConfig): GLTexture {
-        return createTexture2D(this, config);
-    }
-
-    createFrameBuffer(): GLFrameBuffer {
-        return new GLFrameBuffer(this);
-    }
-
-    programUniformsFactory(program: WebGLProgram): ProgramUniformsFactory {
-        return uniformsFactory(this, program);
-    }
-
     destroy(): void {
         this._lastUpdateTime = undefined;
         this._renderer?.delete && this._renderer.delete();
+    }
+
+    createTexture(config: DataTextureConfig | ImageTextureConfig | PBOTextureConfig): GLTexture;
+    createTexture(config: DataTexture3DConfig | PBOTexture3DConfig): GLTexture3D;
+    createTexture(config: DataTextureConfig | ImageTextureConfig | PBOTextureConfig | DataTexture3DConfig | PBOTexture3DConfig): GLTexture | GLTexture3D {
+        return this._textures.createTexture(config);
+    }
+
+    updateTexture(texture: GLTexture3D, config: DataTexture3DConfig | PBOTexture3DConfig): GLTexture3D;
+    updateTexture(texture: GLTexture, config: DataTextureConfig | ImageTextureConfig | PBOTextureConfig): GLTexture;
+    updateTexture(texture: GLTexture | GLTexture3D, config: DataTextureConfig | ImageTextureConfig | PBOTextureConfig | DataTexture3DConfig | PBOTexture3DConfig): GLTexture | GLTexture3D {
+        return this._textures.updateTexture(texture, config);
+    }
+
+////////////// private
+
+    private renderLoop(now: number) {
+        if (!this._running)
+            return;
+
+        const renderer = this._renderer;
+        this.updateSize();
+
+        const rs = this._renderState;
+        if (this._renderStartTime === undefined)
+            this._renderStartTime = now;
+
+        const time = (now - this._renderStartTime) / 1000;
+        rs.fps = time > 0 ? this._renderedFrames / time : 0;
+
+        if (renderer) {
+            const timer = renderer.timer;
+            if (!rs.paused) {
+                const lastUpdateTime = this._lastUpdateTime === undefined ? now : this._lastUpdateTime;
+                const speed = timer?.speed === undefined ? 1 : timer.speed;
+                rs.dt = (now - lastUpdateTime) / 1000 * speed;
+                rs._absoluteTime += rs.dt;
+            }
+
+            const offset = timer?.offset === undefined ? 0 : timer.offset;
+            rs.time = offset + rs._absoluteTime;
+
+            renderer.render(rs);
+
+            if (!rs.paused) {
+                rs.frame++;
+                this._lastUpdateTime = now;
+            }
+        }
+
+        this._renderedFrames++;
+        requestAnimationFrame(this.renderLoop);
+    }
+
+    private updateSize(): void {
+        const {canvas, gl} = this;
+        const {clientWidth: width, clientHeight: height} = this.canvas;
+        if (this._resized || canvas.width !== width || canvas.height !== height) {
+            canvas.width = width;
+            canvas.height = height;
+            gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+            if (this._renderer?.resized)
+                this._renderer.resized(width, height);
+            this._resized = false;
+        }
     }
 
 }

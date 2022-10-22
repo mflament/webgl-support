@@ -1,6 +1,7 @@
-import {Renderer, RenderState} from './Renderer';
+import {Renderer} from './Renderer';
 import {GLContext} from '../GLContext';
 import {FloatPointerType, IndexType} from '../GLEnums';
+import {RenderState} from "./RenderState";
 
 // language=glsl
 const VERTEX_SHADER = `

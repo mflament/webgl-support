@@ -30,7 +30,7 @@ export class ProgramError extends Error {
     }
 }
 
-export function programBuilder(glContext: GLContext): ProgramBuilder {
+export function ProgramBuilder(glContext: GLContext): ProgramBuilder {
     const extension = glContext.gl.getExtension("KHR_parallel_shader_compile");
     return config => {
         if (!config.vs || !config.fs)
