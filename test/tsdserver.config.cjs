@@ -2,7 +2,7 @@
  * @type {import("tsdserver").Options}
  */
 module.exports = {
-    directories: ["src", "test", "."],
+    directories: [".", "./dist", "./src" ],
     headers: {
         'Access-Control-Allow-Origin': '*'
     }

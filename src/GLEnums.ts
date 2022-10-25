@@ -80,7 +80,7 @@ export enum UniformType {
     UNSIGNED_INT_SAMPLER_2D_ARRAY = WebGL2RenderingContext.UNSIGNED_INT_SAMPLER_2D_ARRAY
 }
 
-export enum FloatPointerType {
+export enum FloatAttributeType {
     BYTE = WebGL2RenderingContext.BYTE,
     UNSIGNED_BYTE = WebGL2RenderingContext.UNSIGNED_BYTE,
     SHORT = WebGL2RenderingContext.SHORT,
@@ -89,7 +89,7 @@ export enum FloatPointerType {
     HALF_FLOAT = WebGL2RenderingContext.HALF_FLOAT
 }
 
-export enum IntPointerType {
+export enum IntAttributeType {
     BYTE = WebGL2RenderingContext.BYTE,
     UNSIGNED_BYTE = WebGL2RenderingContext.UNSIGNED_BYTE,
     SHORT = WebGL2RenderingContext.SHORT,
@@ -98,7 +98,7 @@ export enum IntPointerType {
     UNSIGNED_INT = WebGL2RenderingContext.UNSIGNED_INT
 }
 
-export enum IndexType {
+export enum IndexAttributeType {
     UNSIGNED_BYTE = WebGL2RenderingContext.UNSIGNED_BYTE,
     UNSIGNED_SHORT = WebGL2RenderingContext.UNSIGNED_SHORT,
     UNSIGNED_INT = WebGL2RenderingContext.UNSIGNED_INT
@@ -107,10 +107,16 @@ export enum IndexType {
 //////////// textures ///////////////
 
 export enum TextureTarget {
-    GL_TEXTURE_2D = WebGL2RenderingContext.TEXTURE_2D,
-    GL_TEXTURE_3D = WebGL2RenderingContext.TEXTURE_3D,
-    GL_TEXTURE_2D_ARRAY = WebGL2RenderingContext.TEXTURE_2D_ARRAY,
-    GL_TEXTURE_CUBE_MAP = WebGL2RenderingContext.TEXTURE_CUBE_MAP
+    TEXTURE_2D = WebGL2RenderingContext.TEXTURE_2D,
+    TEXTURE_3D = WebGL2RenderingContext.TEXTURE_3D,
+    TEXTURE_2D_ARRAY = WebGL2RenderingContext.TEXTURE_2D_ARRAY,
+    TEXTURE_CUBE_MAP = WebGL2RenderingContext.TEXTURE_CUBE_MAP,
+    TEXTURE_CUBE_MAP_POSITIVE_X = WebGL2RenderingContext.TEXTURE_CUBE_MAP_POSITIVE_X,
+    TEXTURE_CUBE_MAP_NEGATIVE_X = WebGL2RenderingContext.TEXTURE_CUBE_MAP_NEGATIVE_X,
+    TEXTURE_CUBE_MAP_POSITIVE_Y = WebGL2RenderingContext.TEXTURE_CUBE_MAP_POSITIVE_Y,
+    TEXTURE_CUBE_MAP_NEGATIVE_Y = WebGL2RenderingContext.TEXTURE_CUBE_MAP_NEGATIVE_Y,
+    TEXTURE_CUBE_MAP_POSITIVE_Z = WebGL2RenderingContext.TEXTURE_CUBE_MAP_POSITIVE_Z,
+    TEXTURE_CUBE_MAP_NEGATIVE_Z = WebGL2RenderingContext.TEXTURE_CUBE_MAP_NEGATIVE_Z,
 }
 
 export enum InternalFormat {

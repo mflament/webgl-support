@@ -1,23 +1,25 @@
-import {GLTexture} from '../texture/GLTexture';
-import {check} from '../utils/GLUtils';
-import {GLContext} from '../GLContext';
+import {safeCreate} from '../utils';
+import {GLTexture2D} from '../texture';
 
 export class GLFrameBuffer {
-    private readonly frameBuffer: WebGLFramebuffer;
+    private readonly glFrameBuffer: WebGLFramebuffer;
 
-    constructor(readonly context: GLContext) {
-        this.frameBuffer = check(context.gl.createFramebuffer(), 'frame buffer');
+    constructor(readonly gl: WebGL2RenderingContext) {
+        this.glFrameBuffer = safeCreate(gl, 'createFramebuffer');
     }
 
-    render(renderTexture: (w: number, h: number) => void, ...targets: GLTexture[]): void {
-        if (targets.length === 0) return;
+    render(renderTexture: (w: number, h: number) => void, ...targets: GLTexture2D[]): void {
+        if (targets.length === 0)
+            return;
 
-        const {gl, glState} = this.context;
-        glState.bindFrameBuffer(this.frameBuffer);
+        const gl = this.gl;
+
+        this.bind();
+
         const attachments: number[] = [];
         for (let i = 0; i < targets.length; i++) {
             attachments[i] = gl.COLOR_ATTACHMENT0 + i;
-            gl.framebufferTexture2D(gl.FRAMEBUFFER, attachments[i], gl.TEXTURE_2D, targets[i].texture, 0);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, attachments[i], gl.TEXTURE_2D, targets[i].glTexture, 0);
         }
         gl.drawBuffers(attachments);
 
@@ -30,10 +32,20 @@ export class GLFrameBuffer {
         for (let i = 0; i < targets.length; i++) {
             gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, null, 0);
         }
-        glState.bindFrameBuffer(null);
+        this.unbind();
+    }
+
+    bind(): void {
+        const gl = this.gl;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.glFrameBuffer);
+    }
+
+    unbind(): void {
+        const gl = this.gl;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
 
     delete(): void {
-        this.context.gl.deleteFramebuffer(this.frameBuffer);
+        this.gl.deleteFramebuffer(this.glFrameBuffer);
     }
 }

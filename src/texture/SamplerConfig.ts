@@ -12,17 +12,28 @@ export interface SamplerConfig {
     }
 }
 
-export function setSamplerParameters(gl: WebGL2RenderingContext, target: TextureTarget | WebGLSampler, config: Partial<SamplerConfig>): void {
-    const setParam = typeof target === "object" ? gl.samplerParameteri : gl.texParameteri;
-
+export function setSamplerConfig(gl: WebGL2RenderingContext, target: WebGLSampler, config: Partial<SamplerConfig>): void {
     if (config.filter?.minFilter)
-        setParam(target, TextureParameter.MIN_FILTER, config.filter.minFilter);
+        gl.samplerParameteri(target, TextureParameter.MIN_FILTER, config.filter.minFilter);
 
     if (config.filter?.magFilter)
-        setParam(target, TextureParameter.MAG_FILTER, config.filter.magFilter);
+        gl.samplerParameteri(target, TextureParameter.MAG_FILTER, config.filter.magFilter);
 
     if (config.wrap?.s)
-        setParam(target, TextureParameter.WRAP_S, config.wrap.s);
+        gl.samplerParameteri(target, TextureParameter.WRAP_S, config.wrap.s);
     if (config.wrap?.t)
-        setParam(target, TextureParameter.WRAP_T, config.wrap.t);
+        gl.samplerParameteri(target, TextureParameter.WRAP_T, config.wrap.t);
+}
+
+export function setTexureSamplerConfig(gl: WebGL2RenderingContext, target: TextureTarget, config: Partial<SamplerConfig>): void {
+    if (config.filter?.minFilter)
+        gl.texParameteri(target, TextureParameter.MIN_FILTER, config.filter.minFilter);
+
+    if (config.filter?.magFilter)
+        gl.texParameteri(target, TextureParameter.MAG_FILTER, config.filter.magFilter);
+
+    if (config.wrap?.s)
+        gl.texParameteri(target, TextureParameter.WRAP_S, config.wrap.s);
+    if (config.wrap?.t)
+        gl.texParameteri(target, TextureParameter.WRAP_T, config.wrap.t);
 }

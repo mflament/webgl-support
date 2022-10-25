@@ -48,7 +48,7 @@ export interface IProgramUniforms {
 }
 
 export type MemberBindingConfig = { offset: number, stride: number }
-export type StructBindingConfig<T extends {} = any> = {
+export type StructBindingConfig<T = any> = {
     [key in keyof T]?: MemberBindingConfig
 };
 
@@ -58,14 +58,14 @@ export const Struct = {
         members.forEach(member => {
             let type = member.type;
             if (type.isArray()) type = type.elementType;
-            if(type.isStruct() && res.indexOf(type) < 0) {
+            if (type.isStruct() && res.indexOf(type) < 0) {
                 res.push(type);
                 Struct.collectStructs(type.members, res);
             }
         });
         return res;
     },
-    mapOffsets<T = any>(struct: IStruct, output: T): StructBindingConfig<T> {
+    mapOffsets<T extends {}>(struct: IStruct, output: T): StructBindingConfig<T> {
         const res: StructBindingConfig<T> = {};
         Object.keys(output).forEach(key => {
             const member = struct.members.find(m => m.name === key);
