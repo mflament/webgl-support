@@ -17,7 +17,7 @@ export class GLFrameBuffer {
         const drawBuffers: GLenum[] = [];
         for (let i = 0; i < attachments.length; i++) {
             const attachment = attachments[i];
-            if (attachment != null) {
+            if (attachment) {
                 const buffer = gl.COLOR_ATTACHMENT0 + i;
                 drawBuffers.push(buffer);
                 gl.framebufferTexture2D(gl.FRAMEBUFFER, buffer, attachment.target || attachment.texture.target, attachment.texture, attachment.level || 0);
@@ -30,8 +30,10 @@ export class GLFrameBuffer {
         const gl = this.gl;
         for (let i = 0; i < attachments.length; i++) {
             const attachment = attachments[i];
-            const buffer = gl.COLOR_ATTACHMENT0 + i;
-            gl.framebufferTexture2D(gl.FRAMEBUFFER, buffer, attachment.target || attachment.texture.target, null, attachment.level || 0);
+            if (attachment) {
+                const buffer = gl.COLOR_ATTACHMENT0 + i;
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, buffer, attachment.target || attachment.texture.target, null, attachment.level || 0);
+            }
         }
         gl.drawBuffers([]);
     }
