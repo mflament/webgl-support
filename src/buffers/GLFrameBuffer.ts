@@ -1,5 +1,9 @@
 import {safeCreate} from '../utils';
-import {GLTexture2D} from '../texture';
+import {GLTexture} from '../texture';
+import {glConstantName, TextureTarget} from "../GLEnums";
+
+
+export type FrameBufferAttachment = { texture: GLTexture, target?: TextureTarget, level?: number } | null;
 
 export class GLFrameBuffer {
     private readonly glFrameBuffer: WebGLFramebuffer;
@@ -8,31 +12,28 @@ export class GLFrameBuffer {
         this.glFrameBuffer = safeCreate(gl, 'createFramebuffer');
     }
 
-    render(renderTexture: (w: number, h: number) => void, ...targets: GLTexture2D[]): void {
-        if (targets.length === 0)
-            return;
-
+    attach(...attachments: FrameBufferAttachment[]): void {
         const gl = this.gl;
-
-        this.bind();
-
-        const attachments: number[] = [];
-        for (let i = 0; i < targets.length; i++) {
-            attachments[i] = gl.COLOR_ATTACHMENT0 + i;
-            gl.framebufferTexture2D(gl.FRAMEBUFFER, attachments[i], gl.TEXTURE_2D, targets[i].glTexture, 0);
+        const drawBuffers: GLenum[] = [];
+        for (let i = 0; i < attachments.length; i++) {
+            const attachment = attachments[i];
+            if (attachment != null) {
+                const buffer = gl.COLOR_ATTACHMENT0 + i;
+                drawBuffers.push(buffer);
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, buffer, attachment.target || attachment.texture.target, attachment.texture, attachment.level || 0);
+            }
         }
-        gl.drawBuffers(attachments);
+        gl.drawBuffers(drawBuffers);
+    }
 
-        const {width, height} = targets[0];
-
-        gl.viewport(0, 0, width, height);
-
-        renderTexture(width, height);
-
-        for (let i = 0; i < targets.length; i++) {
-            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, null, 0);
+    dettach(...attachments: FrameBufferAttachment[]): void {
+        const gl = this.gl;
+        for (let i = 0; i < attachments.length; i++) {
+            const attachment = attachments[i];
+            const buffer = gl.COLOR_ATTACHMENT0 + i;
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, buffer, attachment.target || attachment.texture.target, null, attachment.level || 0);
         }
-        this.unbind();
+        gl.drawBuffers([]);
     }
 
     bind(): void {
@@ -47,5 +48,12 @@ export class GLFrameBuffer {
 
     delete(): void {
         this.gl.deleteFramebuffer(this.glFrameBuffer);
+    }
+
+    checkStatus() {
+        const gl = this.gl;
+        let status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+        if (status !== gl.FRAMEBUFFER_COMPLETE)
+            throw new Error("Incomplete frame buffer : " + glConstantName(gl, status));
     }
 }

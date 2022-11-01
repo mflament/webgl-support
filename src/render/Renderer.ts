@@ -2,7 +2,7 @@ import {RenderState} from "./RenderState";
 
 export interface Renderer {
 
-    render(state: Readonly<RenderState>): void;
+    render(state: Readonly<RenderState>): boolean | void;
 
     resized?(widht: number, height: number): void;
 

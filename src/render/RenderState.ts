@@ -1,17 +1,14 @@
 export interface RenderState {
-
-    paused: boolean;
-
     /**
-     * seconds elapsed since last update
-     */
-    dt: number;
-    /**
-     *  seconds elapsed since unpaused
+     *  seconds elapsed since start
      */
     time: number;
     /**
-     * rendered frames since unpaused
+     * seconds elapsed since start
+     */
+    dt: number;
+    /**
+     * rendered frames since start
      */
     frame: number;
     /**
