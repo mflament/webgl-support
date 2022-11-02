@@ -32,25 +32,25 @@ export abstract class AbstractGLTexture<P extends TexImageParam, SP extends TexS
     }
 
     texImage(param: P, options?: TexImageOptions): void {
-        options && this.setOptions(options, true);
+        options && this.setOptions(options);
 
         this.doTexImage(param);
 
         if (options?.mipmap)
             this.gl.generateMipmap(this.target);
 
-        options && this.setOptions(options, false);
+        options && this.resetOptions(options);
     }
 
     texSubImage(param: SP, options?: TexImageOptions): void {
-        options && this.setOptions(options, true);
+        options && this.setOptions(options);
 
         this.doTexSubImage(param);
 
         if (options?.mipmap)
             this.gl.generateMipmap(this.target);
 
-        options && this.setOptions(options, false);
+        options && this.resetOptions(options);
     }
 
     generateMipmap(): void {
@@ -60,22 +60,22 @@ export abstract class AbstractGLTexture<P extends TexImageParam, SP extends TexS
         gl.bindTexture(this.target, null);
     }
 
-    private setOptions(options: TexImageOptions, on: boolean) {
+    private setOptions(options: TexImageOptions) {
         const gl = this.gl;
-        if (options?.bind && on) this.bind();
+        if (options?.bind) this.bind();
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, options.noColorSpaceConversion ? gl.NONE : gl.BROWSER_DEFAULT_WEBGL);
+        gl.pixelStorei(gl.UNPACK_ALIGNMENT, options.unpackAlignment || 4);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, !!options.flipY);
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, !!options.premultiplyAlpha);
+    }
 
-        if (options.noColorSpaceConversion)
-            gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, on ? gl.NONE : gl.BROWSER_DEFAULT_WEBGL);
-
-        const upa = options.unpackAlignment || 4;
-        if (upa !== 4)
-            gl.pixelStorei(gl.UNPACK_ALIGNMENT, on ? upa : 4);
-
-        if (options.flipY) gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, on);
-
-        if (options.premultiplyAlpha) gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, on);
-
-        if (options?.bind && !on) this.unbind();
+    private resetOptions(options: TexImageOptions) {
+        const gl = this.gl;
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, gl.BROWSER_DEFAULT_WEBGL);
+        gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+        if (options?.bind) this.unbind();
     }
 
     protected abstract doTexImage(param: P): void;

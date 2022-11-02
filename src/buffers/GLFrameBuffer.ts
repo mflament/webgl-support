@@ -20,7 +20,7 @@ export class GLFrameBuffer {
             if (attachment) {
                 const buffer = gl.COLOR_ATTACHMENT0 + i;
                 drawBuffers.push(buffer);
-                gl.framebufferTexture2D(gl.FRAMEBUFFER, buffer, attachment.target || attachment.texture.target, attachment.texture, attachment.level || 0);
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, buffer, attachment.target || attachment.texture.target, attachment.texture.glTexture, attachment.level || 0);
             }
         }
         gl.drawBuffers(drawBuffers);
