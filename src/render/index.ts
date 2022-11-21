@@ -2,3 +2,8 @@ export * from "./RenderState"
 export * from "./Renderer"
 export * from "./QuadBuffer";
 export * from "./QuadProgram"
+export * from "./GLFrameBuffer"
+export * from "./GLVertexArray"
+export * from "./BufferAttributes"
+export * from "./GLTransformFeedback"
+export * from "./PrimitiveRenderer"

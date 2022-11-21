@@ -4,7 +4,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
     mode: "development",
-    entry: './src/index.ts',
+    entry: ['./src/test/index.ts', '../src/index.ts'],
     plugins: [
         new HtmlWebpackPlugin({
             title: 'Webgl support sandbox'
@@ -14,9 +14,29 @@ module.exports = {
         rules: [
             {
                 test: /\.tsx?$/,
-                use: 'ts-loader',
                 exclude: /node_modules/,
-            }
+                use: [{
+                    loader: 'ts-loader',
+                    options: {
+                        compilerOptions: {
+                            noUnusedLocals: false,
+                            noUnusedParameters: false,
+                            sourceMap: true,
+                        }
+                    }
+                }]
+            },
+            {
+                test: /\.s[ac]ss$/i,
+                use: [
+                    // Creates `style` nodes from JS strings
+                    "style-loader",
+                    // Translates CSS into CommonJS
+                    "css-loader",
+                    // Compiles Sass to CSS
+                    "sass-loader",
+                ],
+            },
         ],
     },
     devtool: 'inline-source-map',

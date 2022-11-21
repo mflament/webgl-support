@@ -1,15 +1,15 @@
-import {TextureTarget} from "../GLEnums";
-import {AbstractGLTexture} from "./AbstractGLTexture";
+import {TextureTarget} from "./GLTextureEnums";
+import {AbstractGLTexture, TexImageParam, TexSubImageParam} from "./AbstractGLTexture";
 import {hasProp} from "../utils";
-import {TexImageParam, TexSubImageParam} from "./GLTexture";
 
-export type Tex2DWithSize = { width: number; height: number; }
+
+type Tex2DWithSize = { width: number; height: number; }
 type Tex2DWithData = Tex2DWithSize & { srcData: ArrayBufferView; srcOffset?: number; }
 type Tex2DWithPBOOffset = Tex2DWithSize & { pboOffset: number; }
 type Tex2DWithSource = { source: TexImageSource; }
 type Tex2DParams = Tex2DWithSize | Tex2DWithData | Tex2DWithPBOOffset | Tex2DWithSource;
 
-type TexImage2DParam = TexImageParam & Tex2DParams;
+export type TexImage2DParam = TexImageParam & Tex2DParams;
 
 export type TexSubImage2DParam = TexSubImageParam & {
     level?: number;

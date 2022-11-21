@@ -1,13 +1,17 @@
 import {RenderState} from "./RenderState";
 
-export interface Renderer {
+export type TimerConfig = { speed: number, offset: number };
 
-    render(state: Readonly<RenderState>): boolean | void;
+export interface Renderer<S extends RenderState = any> {
 
-    resized?(widht: number, height: number): void;
+    timer?: TimerConfig;
+
+    newRenderState?(): S;
+
+    render(state: Readonly<S>): boolean | void;
+
+    resized?(width: number, height: number): void;
 
     delete?(): void;
-
-    timer?: { speed?: number, offset?: number };
 
 }

@@ -1,82 +1,78 @@
-import {hasProp, safeCreate} from "../utils";
-import {BufferUsage} from "../GLEnums";
+import {safeCreate} from "../utils";
+import {BufferTarget, BufferUsage} from "./GLBufferEnums";
 
-type BufferPropsWithSize = { size: number };
-type BufferPropsWithArrayBufferView = { array: ArrayBufferView, srcOffset?: number, length?: number };
-type BufferPropsWithBufferSource = { buffer: BufferSource };
-
-type BufferDataParam = { usage?: BufferUsage } & (BufferPropsWithSize | BufferPropsWithArrayBufferView | BufferPropsWithBufferSource);
-type BufferSubDataParam = { dstOffset?: number } & (BufferPropsWithArrayBufferView | BufferPropsWithBufferSource);
-
-function isBufferPropsWithSize(props: BufferDataParam) : props is BufferPropsWithSize {
-    return hasProp<BufferPropsWithSize>(props, "size", "number");
-}
-
-function isBufferPropsWithArrayBufferView(props: BufferDataParam) : props is BufferPropsWithArrayBufferView {
-    return hasProp<BufferPropsWithArrayBufferView>(props, "array", "object");
-}
-
-function isBufferPropsWithBufferSource(props: BufferDataParam) : props is BufferPropsWithBufferSource {
-    return hasProp<BufferPropsWithBufferSource>(props, "buffer", "object");
-}
-
-export enum GLBufferTarget {
-    ARRAY_BUFFER = WebGL2RenderingContext.ARRAY_BUFFER,
-    ELEMENT_ARRAY_BUFFER = WebGL2RenderingContext.ELEMENT_ARRAY_BUFFER
-}
-
-export abstract class GLBuffer {
+export class GLBuffer {
 
     readonly glBuffer: WebGLBuffer;
+    private _lastTarget?: BufferTarget;
+    private _size = 0;
 
-    protected constructor(readonly gl: WebGL2RenderingContext, readonly target: GLBufferTarget) {
+    constructor(readonly gl: WebGL2RenderingContext) {
         this.glBuffer = safeCreate(gl, 'createBuffer');
     }
 
-    bind(): void {
-        this.gl.bindBuffer(this.target, this.glBuffer);
+    get size(): number {
+        return this._size;
     }
 
-    unbind(): void {
-        this.gl.bindBuffer(this.target, null);
+    bind(target: BufferTarget): void {
+        this.gl.bindBuffer(target, this.glBuffer);
+        this._lastTarget = target;
     }
 
-    bufferData(data: BufferDataParam): void {
+    unbind(target: BufferTarget): void {
+        this.gl.bindBuffer(target, null);
+        if (this._lastTarget === target)
+            this._lastTarget = undefined;
+    }
+
+    bufferData(size: GLsizeiptr, usage: BufferUsage): void;
+    bufferData(srcData: BufferSource | null, usage: BufferUsage): void;
+    bufferData(srcData: ArrayBufferView, usage: BufferUsage, srcOffset: GLuint, length?: GLuint): void;
+    bufferData(sizeOrSrcData: GLsizeiptr | BufferSource | ArrayBufferView | null, usage: BufferUsage, srcOffset?: GLuint, length?: GLuint): void {
         const gl = this.gl;
-        const usage = data.usage || BufferUsage.STATIC_DRAW;
-        if (isBufferPropsWithArrayBufferView(data))
-            gl.bufferData(this.target, data.array, usage, data.srcOffset || 0, data.length);
-        else if (isBufferPropsWithBufferSource(data))
-            gl.bufferData(this.target, data.buffer, usage);
-        else if (isBufferPropsWithSize(data))
-            gl.bufferData(this.target, data.size, usage);
-        else
-            throw new Error("Invalid buffer data");
+        const target = this.checkTarget();
+        if (typeof sizeOrSrcData === "number") {
+            gl.bufferData(target, sizeOrSrcData, usage);
+            this._size = sizeOrSrcData;
+        } else if (typeof srcOffset === "number") {
+            const buffer = sizeOrSrcData as ArrayBufferView;
+            gl.bufferData(target, buffer, usage, srcOffset, length);
+            this._size = length !== undefined ? length : buffer.byteLength - srcOffset;
+        } else {
+            gl.bufferData(target, sizeOrSrcData, usage);
+            if (sizeOrSrcData)
+                this._size = sizeOrSrcData.byteLength;
+        }
     }
 
-    bufferSubData(data: BufferSubDataParam): void {
+    bufferSubData(dstByteOffset: GLintptr, srcData: BufferSource): void;
+    bufferSubData(dstByteOffset: GLintptr, srcData: ArrayBufferView, srcOffset: GLuint, length?: GLuint): void;
+    bufferSubData(dstByteOffset: GLintptr, srcData: BufferSource | ArrayBufferView, srcOffset?: GLuint, length?: GLuint): void {
         const gl = this.gl;
-        if (isBufferPropsWithArrayBufferView(data))
-            gl.bufferSubData(this.target, data.dstOffset || 0, data.array, data.srcOffset || 0, data.length);
-        else if (isBufferPropsWithBufferSource(data))
-            gl.bufferSubData(this.target, data.dstOffset || 0, data.buffer);
+        const target = this.checkTarget();
+        if (typeof srcOffset === "number")
+            gl.bufferSubData(target, dstByteOffset, srcData as ArrayBufferView, srcOffset, length);
         else
-            throw new Error("Invalid buffer data " + data);
+            gl.bufferSubData(target, dstByteOffset, srcData);
+    }
+
+    getBufferData(dstBuffer: ArrayBufferView): void {
+        this.getBufferSubData(0, dstBuffer);
+    }
+
+    getBufferSubData(srcByteOffset: GLintptr, dstBuffer: ArrayBufferView, dstOffset?: GLuint, length?: GLuint): void {
+        this.gl.getBufferSubData(this.checkTarget(), srcByteOffset, dstBuffer, dstOffset, length);
     }
 
     delete(): void {
         this.gl.deleteBuffer(this.glBuffer);
     }
-}
 
-export class GLArrayBuffer extends GLBuffer {
-    constructor(gl: WebGL2RenderingContext) {
-        super(gl, gl.ARRAY_BUFFER);
+    private checkTarget(): BufferTarget {
+        if (!this._lastTarget)
+            throw new Error("Buffer not bound");
+        return this._lastTarget;
     }
-}
 
-export class GLElementArrayBuffer extends GLBuffer {
-    constructor(gl: WebGL2RenderingContext) {
-        super(gl, gl.ELEMENT_ARRAY_BUFFER);
-    }
 }

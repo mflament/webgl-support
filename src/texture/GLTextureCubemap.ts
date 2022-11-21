@@ -1,14 +1,14 @@
-import {TextureTarget} from "../GLEnums";
-import {AbstractGLTexture} from "./AbstractGLTexture";
-import {GLTexture2D, isTexWithSize, Tex2DWithSize, TexSubImage2DParam} from "./GLTexture2D";
+import {TextureTarget} from "./GLTextureEnums";
+import {AbstractGLTexture, TexImageParam} from "./AbstractGLTexture";
+import {GLTexture2D, isTexWithSize, TexSubImage2DParam} from "./GLTexture2D";
 import {hasProp} from "../utils";
-import {TexImageParam} from "./GLTexture";
+
 
 type TexCubemapWithSources = { width?: number, height?: number, sources: TexImageSource[]; }
-type TexCubemapParams = Tex2DWithSize | TexCubemapWithSources
+type TexCubemapParams = { width: number; height: number; } | TexCubemapWithSources
 
-type TexImageCubemapParam = TexImageParam & TexCubemapParams;
-type TexSubImageCubemapParam = TexSubImage2DParam & { face: number };
+export type TexImageCubemapParam = TexImageParam & TexCubemapParams;
+export type TexSubImageCubemapParam = TexSubImage2DParam & { face: number };
 
 export class GLTextureCubemap extends AbstractGLTexture<TexImageCubemapParam, TexSubImageCubemapParam> {
 

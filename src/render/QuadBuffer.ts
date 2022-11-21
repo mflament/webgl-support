@@ -1,42 +1,61 @@
-import {GLArrayBuffer, GLElementArrayBuffer, GLVertexArray} from "../buffers";
-import {IndexAttributeType} from "../GLEnums";
-import {separate} from "../vao";
+import {BufferTarget, BufferUsage, GLBuffer} from "../buffers";
+import {GLVertexArray} from "./GLVertexArray";
+import {FloatAttributeType} from "./BufferAttributes";
+
+type QuadObjects = {
+    vbo: GLBuffer;
+    ibo: GLBuffer;
+    vao: GLVertexArray;
+};
 
 export class QuadBuffer {
-    private readonly vertexBuffer: GLArrayBuffer;
-    private readonly indexBuffer: GLElementArrayBuffer;
-    private readonly vertexArray: GLVertexArray;
+
+    private _objects?: QuadObjects;
 
     constructor(readonly gl: WebGL2RenderingContext) {
-        const vbo = this.vertexBuffer = new GLArrayBuffer(gl);
-        vbo.bind();
-        vbo.bufferData({array: VERTEX})
+        const vbo = new GLBuffer(gl);
+        vbo.bind(BufferTarget.ARRAY_BUFFER);
+        vbo.bufferData(VERTEX, BufferUsage.STATIC_DRAW);
+        vbo.unbind(BufferTarget.ARRAY_BUFFER);
 
-        this.vertexArray = new GLVertexArray(gl);
-        this.vertexArray.attributes = separate().vec2(vbo).build();
+        const vao = new GLVertexArray(gl);
+        vao.bind();
+        vao.vertexAttribPointer(vbo, 0, 2, FloatAttributeType.FLOAT, false, 0, 0);
 
-        const ibo = this.indexBuffer = new GLElementArrayBuffer(gl);
-        ibo.bind();
-        ibo.bufferData({buffer: INDICES});
-        ibo.unbind();
+        const ibo = new GLBuffer(gl);
+        ibo.bind(BufferTarget.ELEMENT_ARRAY_BUFFER);
+        ibo.bufferData(INDICES, BufferUsage.STREAM_DRAW);
+        ibo.unbind(BufferTarget.ELEMENT_ARRAY_BUFFER);
+
+        this._objects = {vbo, ibo, vao};
     }
 
     render(): void {
-        const {gl, vertexArray, indexBuffer} = this;
+        const gl = this.gl;
+        const objects = this._objects;
+        if (!objects)
+            throw new Error("QuadBuffer is deleted");
 
-        vertexArray.bind();
-        indexBuffer.bind();
+        objects.vao.bind();
+        objects.ibo.bind(BufferTarget.ELEMENT_ARRAY_BUFFER);
 
-        gl.drawElements(gl.TRIANGLES, INDICES.length, IndexAttributeType.UNSIGNED_BYTE, 0);
+        gl.drawElements(gl.TRIANGLES, INDICES.length, gl.UNSIGNED_BYTE, 0);
 
-        indexBuffer.unbind();
-        vertexArray.unbind();
+        objects.ibo.unbind(BufferTarget.ELEMENT_ARRAY_BUFFER);
+        objects.vao.unbind();
+    }
+
+    get deleted(): boolean {
+        return !this._objects;
     }
 
     delete(): void {
-        this.vertexArray.delete();
-        this.vertexBuffer.delete();
-        this.indexBuffer.delete();
+        if (this._objects) {
+            this._objects.vao.delete();
+            this._objects.vbo.delete();
+            this._objects.ibo.delete();
+            this._objects = undefined;
+        }
     }
 
 }

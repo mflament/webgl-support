@@ -9,7 +9,7 @@ export class UniformBlock {
     private _size: number;
     private _updateRange: vec2 = [Number.MAX_VALUE, Number.MIN_VALUE];
 
-    constructor(readonly gl: WebGL2RenderingContext, readonly blockBinding: number, private readonly buffer: Uint8Array) {
+    constructor(readonly gl: WebGL2RenderingContext, readonly blockIndex: number, private readonly buffer: Uint8Array) {
         const glBuffer = gl.createBuffer();
         if (!glBuffer)
             throw new Error("Error creating gl buffer");
@@ -17,7 +17,7 @@ export class UniformBlock {
         gl.bindBuffer(gl.UNIFORM_BUFFER, this.glBuffer);
         gl.bufferData(gl.UNIFORM_BUFFER, buffer.length, gl.DYNAMIC_DRAW);
         gl.bindBuffer(gl.UNIFORM_BUFFER, null);
-        gl.bindBufferBase(gl.UNIFORM_BUFFER, blockBinding, this.glBuffer);
+        gl.bindBufferBase(gl.UNIFORM_BUFFER, blockIndex, this.glBuffer);
         this._size = buffer.length;
         this.dataView = new DataView(this.buffer.buffer)
     }

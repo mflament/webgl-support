@@ -1,60 +1,43 @@
-import {QuadBuffer, Renderer, RenderState} from './render';
+import {Renderer, RenderState} from './render';
 import {check} from './utils';
 
 export interface GLContextProps {
     canvas: HTMLCanvasElement;
-    createRenderer?: (glContext: GLContext) => Renderer;
     syncSize?: boolean | number;
 }
 
+function newRenderState(): RenderState {
+    return {time: 0, dt: 0, fps: 0, frame: 0};
+}
+
 export class GLContext {
+
     readonly canvas: HTMLCanvasElement;
     readonly gl: WebGL2RenderingContext;
 
-    private _running = false;
     private _renderer?: Renderer;
 
     private _fpsCounter?: { start: number, frames: number };
 
+    private _resizeObserver?: ResizeObserver;
+
+    private _renderState: RenderState = newRenderState();
+
     private _lastUpdateTime?: number;
+    private _elapsedTime = 0;
 
-    private _quadBuffer?: QuadBuffer;
-
-    private readonly _resizeObserver?: ResizeObserver;
-
-    private readonly _renderState: RenderState & { _absoluteTime: number } = {
-        time: 0,
-        dt: 0,
-        frame: 0,
-        fps: 0,
-        _absoluteTime: 0
-    };
-
-    constructor(readonly props: GLContextProps) {
-        const {canvas, createRenderer} = props;
+    constructor(props: GLContextProps) {
+        const {canvas, syncSize} = props;
         this.renderLoop = this.renderLoop.bind(this);
         this.canvas = canvas;
         this.gl = check(canvas.getContext('webgl2'), 'webgl2 context');
-        this._renderer = createRenderer && createRenderer(this);
-        if (props.syncSize !== undefined) {
-            const updateSize = (entries: ResizeObserverEntry[]) => {
-                const contentRect = entries[0].contentRect;
-                const width = Math.floor(contentRect.width);
-                const height = Math.floor(contentRect.height);
-                this.resize(width, height);
-            }
-            let observerCallback = updateSize;
-            if (typeof props.syncSize === "number" && props.syncSize > 0) {
-                const debounceDelay = props.syncSize;
-                let tid: number | undefined = undefined;
-                observerCallback = entries => {
-                    if (tid !== undefined) clearTimeout(tid);
-                    tid = self.setTimeout(() => updateSize(entries), debounceDelay);
-                }
-            }
-            const observer = this._resizeObserver = new ResizeObserver(observerCallback);
-            observer.observe(canvas);
-        }
+
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+        this.gl.viewport(0, 0, canvas.width, canvas.height);
+
+        if (syncSize !== undefined)
+            this.observeSize(syncSize);
     }
 
     get fps(): number {
@@ -72,50 +55,41 @@ export class GLContext {
         }
     }
 
-    get renderState(): RenderState {
-        return this._renderState;
-    }
-
     get renderer(): Renderer | undefined {
         return this._renderer;
     }
 
+    get renderState(): RenderState {
+        return this._renderState;
+    }
+
     set renderer(renderer: Renderer | undefined) {
+        const wasRunning = this._renderer;
         this._renderer?.delete && this._renderer.delete();
+
         this._renderer = renderer;
-        this._renderer?.resized && this._renderer?.resized(this.canvas.width, this.canvas.height);
-    }
 
-    get running(): boolean {
-        return this._running;
-    }
-
-    start() {
-        if (!this._running) {
-            this._running = true;
-            this._lastUpdateTime = undefined;
-            requestAnimationFrame(this.renderLoop);
+        if (renderer) {
+            this._renderState = renderer.newRenderState ? renderer.newRenderState() : newRenderState();
+            renderer.resized && renderer.resized(this.canvas.width, this.canvas.height);
+            if (!wasRunning) {
+                this._lastUpdateTime = undefined;
+                requestAnimationFrame(this.renderLoop);
+            }
         }
     }
 
-    stop() {
-        this._running = false;
+    get running(): boolean {
+        return !!this._renderer;
     }
 
     reset(): void {
         const rs = this._renderState;
-        rs.dt = rs.frame = rs.time = rs._absoluteTime = 0;
-    }
-
-    get quadBuffer(): QuadBuffer {
-        if (!this._quadBuffer)
-            this._quadBuffer = new QuadBuffer(this.gl);
-        return this._quadBuffer;
+        rs.dt = rs.frame = rs.time = this._elapsedTime = 0;
     }
 
     delete(): void {
         this._lastUpdateTime = undefined;
-        this._quadBuffer && this._quadBuffer.delete();
         this._renderer?.delete && this._renderer.delete();
         this._resizeObserver && this._resizeObserver.disconnect();
     }
@@ -123,10 +97,9 @@ export class GLContext {
 ////////////// private
 
     private renderLoop(now: number) {
-        if (!this._running)
-            return;
-
         const renderer = this._renderer;
+        if (!renderer)
+            return;
 
         const rs = this._renderState;
         let fpsCounter = this._fpsCounter;
@@ -141,24 +114,42 @@ export class GLContext {
             }
         }
 
-        if (renderer) {
-            const timer = renderer.timer;
+        const timer = renderer.timer;
 
-            const lastUpdateTime = this._lastUpdateTime === undefined ? now : this._lastUpdateTime;
-            const speed = timer?.speed === undefined ? 1 : timer.speed;
-            rs.dt = (now - lastUpdateTime) / 1000 * speed;
-            rs._absoluteTime += rs.dt;
+        const lastUpdateTime = this._lastUpdateTime === undefined ? now : this._lastUpdateTime;
+        const speed = timer?.speed === undefined ? 1 : timer.speed;
+        rs.dt = (now - lastUpdateTime) / 1000 * speed;
+        this._elapsedTime += rs.dt;
 
-            const offset = timer?.offset === undefined ? 0 : timer.offset;
-            rs.time = offset + rs._absoluteTime;
+        const offset = timer?.offset === undefined ? 0 : timer.offset;
+        rs.time = offset + this._elapsedTime;
 
-            if (renderer.render(rs))
-                rs.frame++;
-            this._lastUpdateTime = now;
-        }
+        if (renderer.render(rs))
+            rs.frame++;
+        this._lastUpdateTime = now;
 
         fpsCounter.frames++;
         requestAnimationFrame(this.renderLoop);
+    }
+
+    private observeSize(syncSize: number | boolean): void {
+        const updateSize = (entries: ResizeObserverEntry[]) => {
+            const contentRect = entries[0].contentRect;
+            const width = Math.floor(contentRect.width);
+            const height = Math.floor(contentRect.height);
+            this.resize(width, height);
+        }
+        let observerCallback = updateSize;
+        if (typeof syncSize === "number" && syncSize > 0) {
+            const debounceDelay = syncSize;
+            let tid: number | undefined = undefined;
+            observerCallback = entries => {
+                if (tid !== undefined) clearTimeout(tid);
+                tid = self.setTimeout(() => updateSize(entries), debounceDelay);
+            }
+        }
+        const observer = this._resizeObserver = new ResizeObserver(observerCallback);
+        observer.observe(this.canvas);
     }
 
 

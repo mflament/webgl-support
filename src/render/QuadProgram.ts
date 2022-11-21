@@ -1,18 +1,30 @@
-import {GLProgram} from "../program";
+import {GLProgram, ProgramSources} from "../program";
 
 export type QuadProgramProps = { fs: string, vs: string } | { fs: string, positionAttribute?: string };
 
-export async function createQuadProgram(gl: WebGL2RenderingContext, props: QuadProgramProps): Promise<GLProgram> {
+export function createQuadProgram(gl: WebGL2RenderingContext, props: QuadProgramProps): GLProgram {
     const glProgram = new GLProgram(gl);
-    let vs;
-    if ("vs" in props) vs = props.vs;
-    else vs = defaultQuadVS(props.positionAttribute);
-    await glProgram.compile({vs, fs: props.fs});
+    const result = glProgram.compile(sources(props));
+    if (result.hasError()) throw result.formatLogs();
     return glProgram;
 }
 
-// language=glsl
-function defaultQuadVS(posName = 'uv') {
+export async function createQuadProgramAsync(gl: WebGL2RenderingContext, props: QuadProgramProps): Promise<GLProgram> {
+    const glProgram = new GLProgram(gl);
+    const result = await glProgram.compileAsync(sources(props));
+    if (result.hasError()) throw result.formatLogs();
+    return glProgram;
+}
+
+function sources(props: QuadProgramProps): ProgramSources {
+    let vs;
+    if ("vs" in props) vs = props.vs;
+    else vs = defaultQuadVS(props.positionAttribute);
+    return {vs, fs: props.fs};
+}
+
+function defaultQuadVS(posName = "uv") {
+    // language=glsl
     return `#version 300 es
     precision highp float;
     layout(location = 0) in vec2 position;

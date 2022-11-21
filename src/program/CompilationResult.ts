@@ -23,7 +23,11 @@ export class CompilationResult {
         return !this.logs;
     }
 
-    error(): string | undefined {
+    hasError(): this is CompilationResult & { readonly logs: ProgramLogs } {
+        return !!this.logs;
+    }
+
+    formatLogs(): string | undefined {
         const {logs, sources} = this;
         if (!logs)
             return undefined;
@@ -43,6 +47,10 @@ export class CompilationResult {
             error += formatLogs(logs.program) + "\n";
         }
         return error;
+    }
+
+    toString(): string {
+        return this.formatLogs() || "Compiled";
     }
 }
 
