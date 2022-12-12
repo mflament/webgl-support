@@ -16,11 +16,11 @@
       "ScriptHost"
     ],
     "declaration": true,
+    "sourceMap": true,
     "incremental": false,
     "allowJs": false,
     "allowUmdGlobalAccess": false,
     "allowSyntheticDefaultImports": true,
-    "sourceMap": false,
     "strict": true,
     "noImplicitAny": true,
     "noImplicitThis": true,

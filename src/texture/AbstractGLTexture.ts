@@ -1,6 +1,7 @@
 import {InternalFormat, TextureComponentType, TextureFormat, TextureParameter, TextureTarget} from './GLTextureEnums';
 import {safeCreate} from "../utils";
 import {SamplerConfig} from "./SamplerConfig";
+import {GLTexture} from "./GLTexture";
 
 export interface TexImageParam {
     internalFormat: InternalFormat;
@@ -23,7 +24,14 @@ export interface TexImageOptions {
     samplerConfig?: SamplerConfig;
 }
 
-export abstract class AbstractGLTexture<P extends TexImageParam, SP extends TexSubImageParam> {
+export interface TexStorageParam {
+    internalFormat: InternalFormat;
+    width: number;
+    height: number;
+    levels: number;
+}
+
+export abstract class AbstractGLTexture<P extends TexImageParam, SIP extends TexSubImageParam, TSP extends TexStorageParam = TexStorageParam> implements GLTexture {
 
     private _glTexture?: WebGLTexture;
 
@@ -78,7 +86,7 @@ export abstract class AbstractGLTexture<P extends TexImageParam, SP extends TexS
         options && this.resetOptions(options);
     }
 
-    texSubImage(param: SP, options?: TexImageOptions): void {
+    texSubImage(param: SIP, options?: TexImageOptions): void {
         options && this.setOptions(options);
 
         this.doTexSubImage(param);
@@ -140,7 +148,9 @@ export abstract class AbstractGLTexture<P extends TexImageParam, SP extends TexS
 
     protected abstract doTexImage(param: P): void;
 
-    protected abstract doTexSubImage(param: SP): void;
+    protected abstract doTexSubImage(param: SIP): void;
+
+    abstract texStorage(params: TSP): void;
 
 }
 

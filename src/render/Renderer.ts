@@ -2,7 +2,7 @@ import {RenderState} from "./RenderState";
 
 export type TimerConfig = { speed: number, offset: number };
 
-export interface Renderer<S extends RenderState = any> {
+export interface Renderer<S extends RenderState = RenderState> {
 
     timer?: TimerConfig;
 

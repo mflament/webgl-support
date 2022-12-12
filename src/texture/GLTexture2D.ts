@@ -1,5 +1,5 @@
 import {TextureTarget} from "./GLTextureEnums";
-import {AbstractGLTexture, TexImageParam, TexSubImageParam} from "./AbstractGLTexture";
+import {AbstractGLTexture, TexImageParam, TexStorageParam, TexSubImageParam} from "./AbstractGLTexture";
 import {hasProp} from "../utils";
 
 
@@ -21,6 +21,12 @@ export class GLTexture2D extends AbstractGLTexture<TexImage2DParam, TexSubImage2
 
     constructor(gl: WebGL2RenderingContext) {
         super(gl, TextureTarget.TEXTURE_2D);
+    }
+
+    texStorage(params: TexStorageParam): void {
+        this.gl.texStorage2D(TextureTarget.TEXTURE_2D, params.levels, params.internalFormat, params.width, params.height);
+        this._width = params.width;
+        this._height = params.height;
     }
 
     protected doTexImage(param: TexImage2DParam): void {

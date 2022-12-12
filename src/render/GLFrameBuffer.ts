@@ -48,10 +48,11 @@ export enum TextureAttachmentTarget {
     TEXTURE_CUBE_MAP_NEGATIVE_Z = WebGL2RenderingContext.TEXTURE_CUBE_MAP_NEGATIVE_Z
 }
 
-export type FrameBufferAttachment =
-    { texture: GLTexture, attachmentPoint?: TextureAttachmentPoint | ColorAttachment, target?: TextureAttachmentTarget, level?: number }
-    | GLTexture
-    | null;
+export type FrameBufferAttachment = { texture: GLTexture, attachmentPoint?: TextureAttachmentPoint | ColorAttachment, target?: TextureAttachmentTarget, level?: number };
+
+function isFrameBufferAttachment(p: any): p is FrameBufferAttachment {
+    return "texture" in p && p.texture instanceof AbstractGLTexture;
+}
 
 export class GLFrameBuffer {
     private _glFrameBuffer?: WebGLFramebuffer;
@@ -89,30 +90,28 @@ export class GLFrameBuffer {
         this.gl.drawBuffers(buffers);
     }
 
-    attach(...attachments: FrameBufferAttachment[]): void {
+    attach(...attachments: (FrameBufferAttachment | GLTexture | null)[]): void {
         const gl = this.gl;
         const drawBuffers: GLenum[] = []
         for (let i = 0; i < attachments.length; i++) {
             const attachment = attachments[i];
             if (attachment) {
                 let texture, level, target, attachmentPoint;
-                if (attachment instanceof AbstractGLTexture) {
-                    texture = attachment;
-                    target = texture.target;
-                    level = 0;
-                    attachmentPoint = gl.COLOR_ATTACHMENT0 + i;
-                    drawBuffers.push(attachmentPoint);
-                } else {
+                if (isFrameBufferAttachment(attachment)) {
                     texture = attachment.texture;
                     target = attachment.target || texture.target;
                     level = attachment.level || 0;
                     attachmentPoint = attachment.attachmentPoint || gl.COLOR_ATTACHMENT0 + i;
                     if (attachmentPoint >= ColorAttachment.COLOR_ATTACHMENT0 && attachmentPoint <= ColorAttachment.COLOR_ATTACHMENT15)
                         drawBuffers.push(attachmentPoint);
+                } else {
+                    texture = attachment;
+                    target = texture.target;
+                    level = 0;
+                    attachmentPoint = gl.COLOR_ATTACHMENT0 + i;
+                    drawBuffers.push(attachmentPoint);
                 }
-                texture.bind();
                 gl.framebufferTexture2D(gl.FRAMEBUFFER, attachmentPoint, target, texture.glTexture, level);
-                texture.unbind();
             } else {
                 drawBuffers.push(DrawBuffer.NONE);
             }
@@ -122,24 +121,28 @@ export class GLFrameBuffer {
     }
 
 
-    dettach(attachments: FrameBufferAttachment[]): void {
+    dettach(attachments: (FrameBufferAttachment | GLTexture | null)[]): void {
         const gl = this.gl;
         for (let i = 0; i < attachments.length; i++) {
             const attachment = attachments[i];
             if (attachment) {
                 const buffer = gl.COLOR_ATTACHMENT0 + i;
                 let target, level;
-                if (attachment instanceof AbstractGLTexture) {
-                    target = attachment.target;
-                    level = 0
-                } else {
+                if (isFrameBufferAttachment(attachment)) {
                     target = attachment.target || attachment.texture.target;
                     level = attachment.level || 0;
+                } else {
+                    target = attachment.target;
+                    level = 0
                 }
                 gl.framebufferTexture2D(gl.FRAMEBUFFER, buffer, target, null, level);
             }
         }
         gl.drawBuffers([]);
+    }
+
+    invalidate(...attachments: (ColorAttachment | TextureAttachmentPoint)[]) {
+        this.gl.invalidateFramebuffer(this.gl.FRAMEBUFFER, attachments);
     }
 
     bind(): void {

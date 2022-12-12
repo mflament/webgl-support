@@ -1,7 +1,7 @@
 import {CompilationResult, GLContext} from "../../../src";
 import "./index.scss"
+import {createRenderbufferSandbox} from "./RenderBufferSandbox";
 import {createFramebufferSandbox} from "./FramebufferSandbox";
-import {createAnotherSandbox} from "./AnotherSandbox";
 
 export interface TestUniforms {
     uColor: Float32Array | [number, number, number]
@@ -17,6 +17,7 @@ document.body.append(canvas);
 
 const context = new GLContext({canvas});
 createFramebufferSandbox(context)
-// createTransformFeedbackSandbox(context)
-// createAnotherSandbox(context)
+    //createTransformFeedbackSandbox(context)
+    //createAnotherSandbox(context)
+    //createRenderbufferSandbox(context)
     .then(renderer => context.renderer = renderer).catch(e => console.error(e instanceof CompilationResult ? e.formatLogs() : e));

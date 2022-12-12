@@ -1,5 +1,5 @@
 import {TextureTarget} from "./GLTextureEnums";
-import {AbstractGLTexture, TexImageParam} from "./AbstractGLTexture";
+import {AbstractGLTexture, TexImageParam, TexStorageParam} from "./AbstractGLTexture";
 import {GLTexture2D, isTexWithSize, TexSubImage2DParam} from "./GLTexture2D";
 import {hasProp} from "../utils";
 
@@ -14,6 +14,12 @@ export class GLTextureCubemap extends AbstractGLTexture<TexImageCubemapParam, Te
 
     constructor(gl: WebGL2RenderingContext) {
         super(gl, TextureTarget.TEXTURE_CUBE_MAP);
+    }
+
+    texStorage(params: TexStorageParam): void {
+        this.gl.texStorage2D(TextureTarget.TEXTURE_CUBE_MAP, params.levels, params.internalFormat, params.width, params.height);
+        this._width = params.width;
+        this._height = params.height;
     }
 
     protected doTexImage(param: TexImageCubemapParam): void {
