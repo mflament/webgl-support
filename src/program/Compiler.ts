@@ -23,7 +23,7 @@ export class Compiler {
         return this.program.gl;
     }
 
-    private get glProgram(): WebGLProgram {
+    private get glProgram() {
         return this.program.glProgram;
     }
 
@@ -42,34 +42,41 @@ export class Compiler {
         }
     }
 
-    compile(sources: ProgramSources, varyings?: ProgramVaryings): CompilationResult {
+    compile(sources: ProgramSources, varyings?: ProgramVaryings): CompilationResult | undefined {
+        const glProgram = this.glProgram;
+        if (!glProgram)
+            return undefined;
+
         sources = this.trimSources(sources);
         if (this.isCompiled(sources, this._lastCompileResult))
             return this._lastCompileResult;
 
         const start = performance.now();
-        this.doCompile(sources, varyings);
-        return this.createResult(start, sources, varyings);
+        this.doCompile(glProgram, sources, varyings);
+        return this.createResult(glProgram, start, sources, varyings);
     }
 
-    async compileAsync(sources: ProgramSources, varyings?: ProgramVaryings): Promise<CompilationResult> {
-        const {gl, glProgram} = this;
+    async compileAsync(sources: ProgramSources, varyings?: ProgramVaryings): Promise<CompilationResult | undefined> {
+        const {gl} = this;
         const extension = gl.getExtension("KHR_parallel_shader_compile");
         if (!extension)
             return this.compile(sources, varyings);
 
+        const glProgram = this.glProgram;
+        if (!glProgram) return undefined;
         sources = this.trimSources(sources);
         if (this.isCompiled(sources, this._lastCompileResult))
             return Promise.resolve(this._lastCompileResult);
 
         const start = performance.now();
-        this.doCompile(sources, varyings);
-        return new Promise((resolve, reject) => {
+        this.doCompile(glProgram, sources, varyings);
+        return new Promise(resolve => {
             const check = () => {
-                if (this.program.deleted)
-                    reject('Prgram is deleted');
+                const glProgram = this.glProgram;
+                if (!glProgram) // cancelled
+                    resolve(undefined);
                 else if (gl.getProgramParameter(glProgram, extension.COMPLETION_STATUS_KHR) === true)
-                    resolve(this.createResult(start, sources, varyings));
+                    resolve(this.createResult(glProgram, start, sources, varyings));
                 else
                     requestAnimationFrame(check);
             }
@@ -77,9 +84,8 @@ export class Compiler {
         });
     }
 
-    private doCompile(sources: ProgramSources, varyings?: ProgramVaryings): void {
-        const {gl, glProgram} = this;
-
+    private doCompile(glProgram: WebGLProgram, sources: ProgramSources, varyings?: ProgramVaryings): void {
+        const gl = this.gl;
         if (!this._shaders.vs) {
             this._shaders.vs = check(gl.createShader(gl.VERTEX_SHADER), "createShader(VERTEX_SHADER)");
             gl.attachShader(glProgram, this._shaders.vs);
@@ -102,9 +108,9 @@ export class Compiler {
         gl.linkProgram(glProgram);
     }
 
-    private createResult(start: number, sources: ProgramSources, varyings: ProgramVaryings | undefined): CompilationResult {
+    private createResult(glProgram: WebGLProgram, start: number, sources: ProgramSources, varyings: ProgramVaryings | undefined): CompilationResult {
         const compileTime = performance.now() - start;
-        const {gl, glProgram} = this;
+        const gl = this.gl;
         const {vs, fs} = this._shaders;
         let logs;
         const status = gl.getProgramParameter(glProgram, gl.LINK_STATUS);

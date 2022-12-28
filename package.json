@@ -11,7 +11,8 @@
     "clean": "rimraf ./dist/"
   },
   "files": [
-    "./dist"
+    "./dist",
+    "./src"
   ],
   "author": "Yah",
   "license": "ISC",

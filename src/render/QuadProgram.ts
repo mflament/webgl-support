@@ -5,14 +5,14 @@ export type QuadProgramProps = { fs: string, vs: string } | { fs: string, positi
 export function createQuadProgram(gl: WebGL2RenderingContext, props: QuadProgramProps): GLProgram {
     const glProgram = new GLProgram(gl);
     const result = glProgram.compile(sources(props));
-    if (result.hasError()) throw result.formatLogs();
+    if (result?.hasError()) throw result.formatLogs();
     return glProgram;
 }
 
 export async function createQuadProgramAsync(gl: WebGL2RenderingContext, props: QuadProgramProps): Promise<GLProgram> {
     const glProgram = new GLProgram(gl);
     const result = await glProgram.compileAsync(sources(props));
-    if (result.hasError()) throw result.formatLogs();
+    if (result?.hasError()) throw result.formatLogs();
     return glProgram;
 }
 

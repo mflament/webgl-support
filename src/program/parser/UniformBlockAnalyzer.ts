@@ -23,6 +23,8 @@ export function isWithMembers(o: Span): o is Span & WithMembers {
 }
 
 export function analyzeUniformBlocks(program: GLProgram, ...parsedShaders: ParsedShader[]): Record<string, BlockSpan | BlockArraySpan> {
+    if (!program.glProgram)
+        return {};
     const {gl, glProgram} = program;
     if (parsedShaders.length === 0) {
         const shaders = gl.getAttachedShaders(glProgram);

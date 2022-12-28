@@ -12,26 +12,20 @@ import {UniformParameterName, uniformParameterNameEnum, UniformParameterType} fr
 export type ProgramVaryings = { names: string[], bufferMode: TransformFeedbackBufferMode };
 
 export class GLProgram {
-    private _glProgram?: WebGLProgram;
-    private readonly _compiler: Compiler;
+    private _glProgram: WebGLProgram | null;
+    private _compiler?: Compiler;
 
     constructor(readonly gl: WebGL2RenderingContext) {
         this._glProgram = safeCreate(gl, 'createProgram');
         this._compiler = new Compiler(this);
     }
 
-    get glProgram(): WebGLProgram {
-        const glProgram = this._glProgram;
-        if (!glProgram) throw new Error("GLProgram is deleted");
-        return glProgram;
+    get glProgram(): WebGLProgram | null {
+        return this._glProgram;
     }
 
     get lastCompileResult(): CompilationResult | undefined {
-        return this._compiler.lastCompileResult;
-    }
-
-    get deleted(): boolean {
-        return !this._glProgram;
+        return this._compiler?.lastCompileResult;
     }
 
     use(): void {
@@ -43,47 +37,50 @@ export class GLProgram {
     }
 
     delete(): void {
-        this._compiler.deleteShaders();
+        if (this._compiler) {
+            this._compiler?.deleteShaders();
+            this._compiler = undefined;
+        }
         if (this._glProgram) {
             this.gl.deleteProgram(this._glProgram);
-            this._glProgram = undefined;
+            this._glProgram = null;
         }
     }
 
     deleteShaders(): void {
-        this._compiler.deleteShaders();
+        this._compiler?.deleteShaders();
     }
 
-    compile(sources: ProgramSources, varyings?: ProgramVaryings): CompilationResult {
-        return this._compiler.compile(sources, varyings);
+    compile(sources: ProgramSources, varyings?: ProgramVaryings): CompilationResult | undefined {
+        return this._compiler?.compile(sources, varyings);
     }
 
-    async compileAsync(sources: ProgramSources, varyings?: ProgramVaryings): Promise<CompilationResult> {
-        return this._compiler.compileAsync(sources, varyings);
+    async compileAsync(sources: ProgramSources, varyings?: ProgramVaryings): Promise<CompilationResult | undefined> {
+        return this._compiler?.compileAsync(sources, varyings);
     }
 
     getUniformLocation(name: string): WebGLUniformLocation | null {
-        return this.gl.getUniformLocation(this.glProgram, name);
+        return this.glProgram && this.gl.getUniformLocation(this.glProgram, name);
     }
 
     getAttribLocation(name: string): number {
-        return this.gl.getAttribLocation(this.glProgram, name);
+        return this.glProgram ? this.gl.getAttribLocation(this.glProgram, name) : -1;
     }
 
     getFragDataLocation(name: string): number {
-        return this.gl.getFragDataLocation(this.glProgram, name);
+        return this.glProgram ? this.gl.getFragDataLocation(this.glProgram, name) : -1;
     }
 
     getBlockIndex(name: string): number | undefined {
-        const index = this.gl.getUniformBlockIndex(this.glProgram, name);
+        const index = this.glProgram ? this.gl.getUniformBlockIndex(this.glProgram, name) : this.gl.INVALID_INDEX;
         if (index === this.gl.INVALID_INDEX)
             return undefined;
         return index;
     }
 
-    getParameter<P extends ProgramParameterName>(name: P): ProgramParameterType<P> {
+    getParameter<P extends ProgramParameterName>(name: P): ProgramParameterType<P> | undefined {
         const {glProgram, gl} = this;
-        return gl.getProgramParameter(glProgram, parameterNameEnum(name));
+        return glProgram ? gl.getProgramParameter(glProgram, parameterNameEnum(name)) : undefined;
     }
 
     getUniformParameter<P extends UniformParameterName>(uniformIndex: number, name: P): UniformParameterType<P> {
@@ -92,7 +89,7 @@ export class GLProgram {
 
     getUniformParameters<P extends UniformParameterName>(uniformIndices: number[], name: P): UniformParameterType<P>[] {
         const {glProgram, gl} = this;
-        return gl.getActiveUniforms(glProgram, uniformIndices, uniformParameterNameEnum(name));
+        return glProgram ? gl.getActiveUniforms(glProgram, uniformIndices, uniformParameterNameEnum(name)) : [];
     }
 
 }
