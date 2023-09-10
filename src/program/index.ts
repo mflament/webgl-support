@@ -1,5 +1,6 @@
 export * from "./GLType"
 export * from "./GLProgramEnums"
+export * from "./GLCompiler"
 export * from "./GLProgram"
 export * from "./CompilationResult"
 export * from "./uniform"

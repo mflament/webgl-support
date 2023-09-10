@@ -1,2 +1,2 @@
 export * from "./UniformBlock"
-export * from "./GLUniformEnums"
+export * from "./UniformUtils"

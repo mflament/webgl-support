@@ -131,7 +131,7 @@ export function parseShader(source: string, options?: { quiet?: boolean }): Pars
         if (!node) return undefined;
         if (node?.type === "array_specifiers") {
             if (node.specifiers[0] && node.specifiers[0].expression)
-                return {length: parseInt(node.specifiers[0].expression)};
+                return {length: parseInt(node.specifiers[0].expression.token)};
             return {length: undefined};
         }
         if (node) console.warn("Unhandled quantifier " + JSON.stringify(node));

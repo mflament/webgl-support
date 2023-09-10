@@ -1,17 +1,16 @@
 // language=glsl
-export const VS = `
-    #version 300 es
-    precision highp float;
-    in mat4 mat4In;
-    in vec2 position;
+export const VS = `#version 300 es
+precision highp float;
+in mat4 mat4In;
+in vec2 position;
 
-    out vec2 uv;
-    out mat4 testOut;
+out vec2 uv;
+out mat4 testOut;
 
-    void main() {
-        gl_Position = vec4(position, 0.0, 1.0) * mat4In;
-        uv = position;
-    }
+void main() {
+    gl_Position = vec4(position, 0.0, 1.0) * mat4In;
+    uv = position;
+}
 `;
 
 // language=glsl

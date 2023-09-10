@@ -1,4 +1,4 @@
-import {GLSLMatrixType, GLSLScalarType, GLSLType, GLSLVectorType, isGLSLType} from "./GLSLType";
+import {GLSLMatrixType, GLSLScalarType, GLSLType, GLSLVectorType} from "./GLSLType";
 
 export interface ParsedShader {
     source: string;
@@ -105,30 +105,5 @@ export function mergeUniformBlocks(...shaders: ParsedShaders) {
             Object.assign(res.uniformBlocks, s.uniformBlocks);
         }
     });
-    return res;
-}
-
-export function flattenUniforms(parsedShader: ParsedShader): FlatUniformDeclaration[] {
-    const res: FlatUniformDeclaration[] = [];
-
-    function flatten(declaration: VariableDeclaration, prefix?: string, index?: number) {
-        let name = prefix ? prefix + "." + declaration.name : declaration.name;
-        if (index !== undefined) name += "[" + index + "]";
-        const quantifier = declaration.quantifier;
-        if (quantifier) {
-            for (let i = 0; i < quantifier.length; i++)
-                flatten({...declaration, quantifier: undefined}, prefix, i);
-        } else {
-            if (typeof declaration.type === "object" || !isGLSLType(declaration.type)) {
-                const struct = typeof declaration.type === "string" ? parsedShader.structs[declaration.type] : declaration.type;
-                if (!struct) throw new Error("Unresolved type " + declaration.type + " for " + name);
-                struct.members.forEach(member => flatten(member, name));
-            } else {
-                res.push({name, type: declaration.type, container: declaration.container});
-            }
-        }
-    }
-
-    Object.values(parsedShader.uniforms).forEach(ud => flatten(ud));
     return res;
 }

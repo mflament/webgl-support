@@ -1,22 +1,11 @@
-import {GLProgram, ProgramVaryings} from "./GLProgram";
-
 export interface ProgramLogs {
     vs?: string | null;
     fs?: string | null;
     program: string | null;
 }
 
-export interface ProgramSources {
-    vs: string;
-    fs: string;
-}
-
 export class CompilationResult {
-    constructor(readonly program: GLProgram,
-                readonly sources: ProgramSources,
-                readonly varyings: ProgramVaryings | undefined,
-                readonly compileTime: number,
-                readonly logs: ProgramLogs | undefined) {
+    constructor(readonly compileTime: number, readonly vs: string, readonly fs: string, readonly logs: ProgramLogs | undefined) {
     }
 
     get compiled(): boolean {
@@ -28,17 +17,17 @@ export class CompilationResult {
     }
 
     formatLogs(): string | undefined {
-        const {logs, sources} = this;
+        const {logs, vs, fs} = this;
         if (!logs)
             return undefined;
         let error = '';
         if (logs.vs !== undefined) {
-            error += formatSources(sources.vs);
+            error += formatSources(vs);
             error += "---------------------------------------------\n";
             error += formatLogs(logs.vs) + "\n";
         }
         if (logs.fs !== undefined) {
-            error += formatSources(sources.fs);
+            error += formatSources(fs);
             error += "---------------------------------------------\n";
             error += formatLogs(logs.fs);
         }

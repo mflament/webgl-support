@@ -1,6 +1,6 @@
-import {PerspectiveCamera} from "./PerspectiveCamera";
 import {vec2, vec3} from "gl-matrix";
 import * as GLMath from "../utils";
+import {PerspectiveCamera} from "./PerspectiveCamera";
 
 export enum MouseButton {
     LEFT,
@@ -38,7 +38,7 @@ export class OrbitControls {
 
     rotateSpeed = Math.PI;
     panSpeed = 5;
-
+    zoomSpeed = 0.8;
 
     constructor(readonly camera: PerspectiveCamera, readonly canvas: HTMLCanvasElement) {
         canvas.addEventListener('mousedown', e => this.mouseDown(e as MouseEvent));
@@ -86,12 +86,9 @@ export class OrbitControls {
         const m = this.getMove(e, this.rotateSpeed);
 
         const spos = this.spos;
-        let inclination = spos[1];
-        inclination = GLMath.clamp(inclination - m[1], this.inclinationRange[0], this.inclinationRange[1]);
-        this.spos[1] = inclination;
+        spos[1] = GLMath.clamp(spos[1] - m[1], this.inclinationRange[0], this.inclinationRange[1]);
 
         let azimuth = spos[2];
-
         azimuth = azimuth - m[0];
         if (azimuth > Math.PI) azimuth = azimuth - 2 * Math.PI;
         else if (azimuth < -Math.PI) azimuth = azimuth + 2 * Math.PI;
@@ -104,7 +101,7 @@ export class OrbitControls {
 
     private zoom(z: boolean): void {
         let radius = this.spos[0];
-        const zoomFactor = 0.8;
+        const zoomFactor = this.zoomSpeed;
         radius += z ? zoomFactor : -zoomFactor;
         radius = Math.max(this.camera.near, radius);
         this.spos[0] = radius;
@@ -134,7 +131,7 @@ export class OrbitControls {
     }
 
     private updateWorld() {
-        this.camera.updateWorldMatrix();
+        this.camera.viewDirty = true;
         this.onChange && this.onChange();
     }
 

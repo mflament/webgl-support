@@ -1,23 +1,26 @@
-import {safeCreate} from "../utils";
 import {
     parameterNameEnum,
     ProgramParameterName,
     ProgramParameterType,
     TransformFeedbackBufferMode
 } from "./GLProgramEnums";
-import {CompilationResult, ProgramSources} from "./CompilationResult";
-import {Compiler} from "./Compiler";
+import {CompilationResult} from "./CompilationResult";
 import {UniformParameterName, uniformParameterNameEnum, UniformParameterType} from "./uniform";
+import {compile, compileAsync} from "./GLCompiler";
 
 export type ProgramVaryings = { names: string[], bufferMode: TransformFeedbackBufferMode };
 
+export type ProgramSources = { vs: string, fs: string };
+
 export class GLProgram {
-    private _glProgram: WebGLProgram | null;
-    private _compiler?: Compiler;
+    private readonly _glProgram: WebGLProgram;
+    private readonly _sources: ProgramSources = {vs: '', fs: ''};
+    private _lastCompileResult?: CompilationResult;
 
     constructor(readonly gl: WebGL2RenderingContext) {
-        this._glProgram = safeCreate(gl, 'createProgram');
-        this._compiler = new Compiler(this);
+        const program = gl.createProgram();
+        if (!program) throw new Error("Error creating progam");
+        this._glProgram = program;
     }
 
     get glProgram(): WebGLProgram | null {
@@ -25,7 +28,7 @@ export class GLProgram {
     }
 
     get lastCompileResult(): CompilationResult | undefined {
-        return this._compiler?.lastCompileResult;
+        return this._lastCompileResult;
     }
 
     use(): void {
@@ -37,26 +40,28 @@ export class GLProgram {
     }
 
     delete(): void {
-        if (this._compiler) {
-            this._compiler?.deleteShaders();
-            this._compiler = undefined;
+        this.gl.deleteProgram(this._glProgram);
+    }
+
+    compile(sources: ProgramSources, varyings?: ProgramVaryings): CompilationResult {
+        if (!this._lastCompileResult || this.needsCompile(sources)) {
+            this._lastCompileResult = compile(this.gl, this._glProgram, sources.vs, sources.fs, varyings) || null;
+            Object.assign(this._sources, sources);
         }
-        if (this._glProgram) {
-            this.gl.deleteProgram(this._glProgram);
-            this._glProgram = null;
+        return this._lastCompileResult;
+    }
+
+    async compileAsync(sources: ProgramSources, varyings?: ProgramVaryings): Promise<CompilationResult | null> {
+        if (!this._lastCompileResult || this.needsCompile(sources)) {
+            this._lastCompileResult = await compileAsync(this.gl, this._glProgram, sources.vs, sources.fs, varyings);
+            Object.assign(this._sources, sources);
+            return this._lastCompileResult;
         }
+        return this._lastCompileResult;
     }
 
-    deleteShaders(): void {
-        this._compiler?.deleteShaders();
-    }
-
-    compile(sources: ProgramSources, varyings?: ProgramVaryings): CompilationResult | undefined {
-        return this._compiler?.compile(sources, varyings);
-    }
-
-    async compileAsync(sources: ProgramSources, varyings?: ProgramVaryings): Promise<CompilationResult | undefined> {
-        return this._compiler?.compileAsync(sources, varyings);
+    private needsCompile(sources: ProgramSources): boolean {
+        return this._sources.vs !== sources.vs || this._sources.fs !== sources.fs;
     }
 
     getUniformLocation(name: string): WebGLUniformLocation | null {

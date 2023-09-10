@@ -7,3 +7,4 @@ export * from "./GLVertexArray"
 export * from "./BufferAttributes"
 export * from "./GLTransformFeedback"
 export * from "./PrimitiveRenderer"
+export * from "./VertexArrayAttribute";

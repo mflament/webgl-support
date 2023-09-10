@@ -4,7 +4,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
     mode: "development",
-    entry: ['./src/test/index.ts', '../src/index.ts'],
+    entry: ['./src/index.ts'],
     plugins: [
         new HtmlWebpackPlugin({
             title: 'Webgl support sandbox'

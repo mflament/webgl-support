@@ -1,7 +1,7 @@
 import {TextureTarget} from "./GLTextureEnums";
 import {AbstractGLTexture, TexImageParam, TexStorageParam} from "./AbstractGLTexture";
 import {GLTexture2D, isTexWithSize, TexSubImage2DParam} from "./GLTexture2D";
-import {hasProp} from "../utils";
+import {sourceHeight, sourceWidth} from "../utils";
 
 
 type TexCubemapWithSources = { width?: number, height?: number, sources: TexImageSource[]; }
@@ -26,9 +26,9 @@ export class GLTextureCubemap extends AbstractGLTexture<TexImageCubemapParam, Te
         const gl = this.gl;
         const {internalFormat, format, type} = param;
         let width, height;
-        if (this.isTexCubemapWithSource(param)) {
-            width = param.width || param.sources[0].width;
-            height = param.height || param.sources[1].height;
+        if (this.isTexCubemapWithSources(param)) {
+            width = param.width !== undefined ? param.width : sourceWidth(param.sources[0]);
+                height = param.height !== undefined ? param.height : sourceHeight(param.sources[0]);
             for (let i = 0; i < 6; i++)
                 gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, internalFormat, width, height, 0, format, type, param.sources[i]);
         } else if (isTexWithSize(param)) {
@@ -48,8 +48,8 @@ export class GLTextureCubemap extends AbstractGLTexture<TexImageCubemapParam, Te
         GLTexture2D.texSubImage(this.gl, this.gl.TEXTURE_CUBE_MAP_POSITIVE_X + param.face, sp);
     }
 
-    private isTexCubemapWithSource(param: TexCubemapParams): param is TexCubemapWithSources {
-        return hasProp<TexCubemapWithSources>(param, "sources", "array");
+    private isTexCubemapWithSources(param: TexCubemapParams): param is TexCubemapWithSources {
+        return "sources" in param && Array.isArray(param.sources);
     }
 
 }

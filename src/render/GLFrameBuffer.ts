@@ -1,4 +1,4 @@
-import {glEnumName, safeCreate} from '../utils';
+import {glEnumName} from '../utils';
 import {GLTexture, GLTexture2D} from '../texture';
 import {AbstractGLTexture} from "../texture/AbstractGLTexture";
 
@@ -55,10 +55,10 @@ function isFrameBufferAttachment(p: any): p is FrameBufferAttachment {
 }
 
 export class GLFrameBuffer {
-    private _glFrameBuffer?: WebGLFramebuffer;
+    private _glFrameBuffer: WebGLFramebuffer | null;
 
     constructor(readonly gl: WebGL2RenderingContext) {
-        this._glFrameBuffer = safeCreate(gl, 'createFramebuffer');
+        this._glFrameBuffer = gl.createFramebuffer();
     }
 
     get glFrameBuffer(): WebGLFramebuffer {
@@ -74,7 +74,7 @@ export class GLFrameBuffer {
     delete(): void {
         if (this._glFrameBuffer) {
             this.gl.deleteFramebuffer(this._glFrameBuffer);
-            this._glFrameBuffer = undefined;
+            this._glFrameBuffer = null;
         }
     }
 

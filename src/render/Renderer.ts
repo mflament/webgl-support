@@ -1,17 +1,22 @@
 import {RenderState} from "./RenderState";
 
-export type TimerConfig = { speed: number, offset: number };
+export interface Renderer {
 
-export interface Renderer<S extends RenderState = RenderState> {
+    /**
+     * Called each animation frame, even if paused (state will reflect this)
+     * @param state the current render state
+     */
+    render(state: Readonly<RenderState>): void;
 
-    timer?: TimerConfig;
+    /**
+     * Called only if sync syze is active on controller.
+     */
+    onResize?(width: number, height: number): void;
 
-    newRenderState?(): S;
+    /**
+     * Called when gl context is lost. The container does not need to delete GL resources, and will not be used anymore.
+     */
+    onContextLost?(): void;
 
-    render(state: Readonly<S>): boolean | void;
-
-    resized?(width: number, height: number): void;
-
-    delete?(): void;
-
+    stop?(): void;
 }

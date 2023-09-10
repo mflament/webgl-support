@@ -1,6 +1,6 @@
 import {TextureTarget} from "./GLTextureEnums";
 import {AbstractGLTexture, TexImageParam, TexStorageParam, TexSubImageParam} from "./AbstractGLTexture";
-import {hasProp} from "../utils";
+import {hasProp, sourceHeight, sourceWidth} from "../utils";
 
 
 type Tex2DWithSize = { width: number; height: number; }
@@ -88,14 +88,4 @@ function isTexWithPBOOffset(param: Tex2DParams): param is Tex2DWithPBOOffset {
 
 function isTexWithSource(param: Tex2DParams): param is Tex2DWithSource {
     return hasProp<Tex2DWithSource>(param, "source", "object");
-}
-
-function sourceWidth(source: TexImageSource): number {
-    if (source instanceof HTMLVideoElement) return source.videoWidth;
-    return source.width;
-}
-
-function sourceHeight(source: TexImageSource): number {
-    if (source instanceof HTMLVideoElement) return source.videoHeight;
-    return source.height;
 }

@@ -1,4 +1,3 @@
-import {check} from "../utils";
 import {GLBuffer} from "../buffers";
 
 export enum TFBPrimitiveMode {
@@ -8,15 +7,13 @@ export enum TFBPrimitiveMode {
 }
 
 export class GLTransformFeedback {
-    private _glTransformFeedback?: WebGLTransformFeedback;
+    private _glTransformFeedback: WebGLTransformFeedback | null;
 
     constructor(readonly gl: WebGL2RenderingContext) {
-        this._glTransformFeedback = check(gl.createTransformFeedback(), "TransformFeedback");
+        this._glTransformFeedback = gl.createTransformFeedback();
     }
 
-    get glTransformFeedback(): WebGLTransformFeedback {
-        if (!this._glTransformFeedback)
-            throw new Error("TransformFeedback is deleted");
+    get glTransformFeedback(): WebGLTransformFeedback | null {
         return this._glTransformFeedback;
     }
 
@@ -54,7 +51,7 @@ export class GLTransformFeedback {
     delete(): void {
         if (this._glTransformFeedback) {
             this.gl.deleteTransformFeedback(this._glTransformFeedback);
-            this._glTransformFeedback = undefined;
+            this._glTransformFeedback = null;
         }
     }
 }

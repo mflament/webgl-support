@@ -1,16 +1,13 @@
-export function check<T>(param: T | null, name: string): T {
-    if (!param) throw new Error(name + ' is null');
-    return param;
-}
-
-export function safeCreate<T>(gl: WebGL2RenderingContext, create: keyof WebGL2RenderingContext): T {
-    if (!gl[create]) throw new Error("Undefined gl function " + create);
-    const obj = (gl[create] as Function).call(gl);
-    return check(obj, create);
+export function check<T>(gl: WebGL2RenderingContext, f: () => T | null): T {
+    const obj = f.call(gl);
+    if (obj === null)
+        throw new Error(f.name);
+    return obj;
 }
 
 /**
  * @param s color formated as #rrggbbaa
+ * @param normalize return normalised color components
  */
 export function parseColor(s: string, normalize = true): { r: number; g: number; b: number; a: number } {
     let r = parseInt(s.substring(1, 3), 16);

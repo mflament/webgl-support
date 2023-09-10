@@ -1,6 +1,6 @@
 export interface RenderState {
     /**
-     *  seconds elapsed since start
+     * Seconds elapsed since start
      */
     time: number;
     /**

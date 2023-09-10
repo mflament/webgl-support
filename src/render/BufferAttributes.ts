@@ -22,6 +22,7 @@ interface BaseBufferAttribute {
     attributeType?: 'float' | 'int';
     size: BufferAttributeSize;
     type: FloatAttributeType | IntAttributeType;
+    divisor?: number;
 }
 
 export interface FloatBufferAttribute extends BaseBufferAttribute {
@@ -53,22 +54,22 @@ export type BufferAttribute = PartialBufferAttribute & {
 export type InterleavedBufferAttributes = BufferAttribute[] & { readonly stride: number };
 
 export function interleaved(...pattributes: PartialBufferAttribute[]): InterleavedBufferAttributes {
-    const stride = pattributes.reduce((total, a) => total + attributeSize(a), 0);
-    const attributes = createAttributes(pattributes, stride, (off, attr) => off + attributeSize(attr));
+    const stride = pattributes.reduce((total, a) => total + attributeBytes(a), 0);
+    const attributes = createAttributes(pattributes, stride,true);
     (attributes as any).stride = stride;
     return attributes as InterleavedBufferAttributes;
 }
 
 export function separate(vertexCount: number, ...pattributes: PartialBufferAttribute[]): BufferAttribute[] {
-    return createAttributes(pattributes, 0, (off, attr) => off + attributeSize(attr) * vertexCount);
+    return createAttributes(pattributes, 0, false, vertexCount);
 }
 
-function createAttributes(pattributes: PartialBufferAttribute[], stride: number,
-                          nextOffset: (offset: number, attr: PartialBufferAttribute) => number): BufferAttribute[] {
+function createAttributes(pattributes: PartialBufferAttribute[], stride: number, interleaved: boolean, vertexCount = 0): BufferAttribute[] {
     let offset = 0;
     const attributes: BufferAttribute[] = [];
     for (const attr of pattributes) {
         let ba: BufferAttribute;
+        const bytes = attributeBytes(attr);
         if (attr.attributeType === "int")
             ba = {...attr, offset, stride};
         else
@@ -78,26 +79,30 @@ function createAttributes(pattributes: PartialBufferAttribute[], stride: number,
                 normalized: attr.normalized || false,
                 offset, stride
             };
-        offset = nextOffset(offset, attr);
+        offset = interleaved ?  offset + bytes : offset + attributeBytes(attr) * vertexCount;
         attributes.push(ba);
     }
     return attributes;
 }
 
-function attributeSize(attr: PartialBufferAttribute): number {
-    switch (attr.type) {
+export function attributeBytes(attr: PartialBufferAttribute): number {
+    return scalarBytes(attr.type) * attr.size;
+}
+
+export function scalarBytes(type: GLenum): number {
+    switch (type) {
         case FloatAttributeType.BYTE:
         case FloatAttributeType.UNSIGNED_BYTE:
-            return attr.size;
+            return 1;
         case FloatAttributeType.SHORT:
         case FloatAttributeType.UNSIGNED_SHORT:
-            return attr.size * 2;
+            return 2;
         case FloatAttributeType.FLOAT:
         case FloatAttributeType.HALF_FLOAT:
         case IntAttributeType.INT:
         case IntAttributeType.UNSIGNED_INT:
-            return attr.size * 4;
+            return 4;
         default:
-            throw new Error("Invalid buffer attribute type " + attr);
+            throw new Error("Invalid buffer attribute type " + type);
     }
 }

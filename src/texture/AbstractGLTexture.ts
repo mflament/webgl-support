@@ -1,5 +1,4 @@
 import {InternalFormat, TextureComponentType, TextureFormat, TextureParameter, TextureTarget} from './GLTextureEnums';
-import {safeCreate} from "../utils";
 import {SamplerConfig} from "./SamplerConfig";
 import {GLTexture} from "./GLTexture";
 
@@ -33,13 +32,13 @@ export interface TexStorageParam {
 
 export abstract class AbstractGLTexture<P extends TexImageParam, SIP extends TexSubImageParam, TSP extends TexStorageParam = TexStorageParam> implements GLTexture {
 
-    private _glTexture?: WebGLTexture;
+    private _glTexture: WebGLTexture | null;
 
     protected _width = 0;
     protected _height = 0;
 
     protected constructor(readonly gl: WebGL2RenderingContext, readonly target: TextureTarget) {
-        this._glTexture = safeCreate(gl, 'createTexture');
+        this._glTexture = gl.createTexture();
     }
 
     get glTexture(): WebGLTexture {
@@ -55,7 +54,7 @@ export abstract class AbstractGLTexture<P extends TexImageParam, SIP extends Tex
     delete(): void {
         if (this._glTexture) {
             this.gl.deleteTexture(this._glTexture);
-            this._glTexture = undefined;
+            this._glTexture = null;
         }
     }
 

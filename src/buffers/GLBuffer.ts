@@ -1,14 +1,18 @@
-import {safeCreate} from "../utils";
 import {BufferTarget, BufferUsage} from "./GLBufferEnums";
 
 export class GLBuffer {
 
-    readonly glBuffer: WebGLBuffer;
+    private _glBuffer: WebGLBuffer | null;
     private _lastTarget?: BufferTarget;
     private _size = 0;
 
     constructor(readonly gl: WebGL2RenderingContext) {
-        this.glBuffer = safeCreate(gl, 'createBuffer');
+        this._glBuffer = gl.createBuffer();
+    }
+
+
+    get glBuffer(): WebGLBuffer | null {
+        return this._glBuffer;
     }
 
     get size(): number {
@@ -16,7 +20,7 @@ export class GLBuffer {
     }
 
     bind(target: BufferTarget): void {
-        this.gl.bindBuffer(target, this.glBuffer);
+        this.gl.bindBuffer(target, this._glBuffer);
         this._lastTarget = target;
     }
 
@@ -66,7 +70,8 @@ export class GLBuffer {
     }
 
     delete(): void {
-        this.gl.deleteBuffer(this.glBuffer);
+        this.gl.deleteBuffer(this._glBuffer);
+        this._glBuffer = null;
     }
 
     private checkTarget(): BufferTarget {

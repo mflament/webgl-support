@@ -1,12 +1,4 @@
-import {
-    analyzeUniformBlocks,
-    createQuadProgram, flattenUniforms,
-    GLContext,
-    GLProgram,
-    isArraySpan,
-    parseShader,
-    QuadBuffer
-} from "../../../src";
+import {collectAttributes, collectUniforms, createAndCompile, parseShader, Renderer} from "../../src";
 
 // language=glsl
 const VS = `
@@ -16,9 +8,9 @@ const VS = `
     void vertex(in int vertexId, out vec3 vPosition);
 
     in vec2 position;
-    
+
     out vec3 vPosition;
-    
+
     void main(void)
     {
         vertex(gl_VertexID, vPosition);
@@ -31,24 +23,9 @@ const VS = `
         uv = vec2((position + 1.0) * 0.5);
         vPosition = vec3(position, 0.0);
     }
-    
+
     void test(in vec2 vIn) {
-        
-    }
-`
 
-// language=glsl
-const RENDER_FS = `
-    #version 300 es
-    precision highp float;
-
-    in vec2 uv;
-
-    out vec4 color;
-
-    void main() {
-        vec3 c = vec3(uv, 0.0);
-        color = vec4(c, 1.0);
     }
 `
 
@@ -62,77 +39,49 @@ struct TestStruct {
     vec4[4]  colors;
 };
 
+
+layout(std140) uniform BlockData
+{
+    uint data[20];
+    uint midstate[8];
+    int  hMaskOffset;
+    uint hMask;
+    int  resultsSize;
+} uBlockData;
+
 uniform TestStruct[5] uts0;
 uniform vec2 uTest[10];
 
 in vec2 uv;
+in mat4 transform;
 
 out vec4 color;
 
-const float[1] map = float[1] (0.0);
-void test() {
-    for (int i = 0; i < map.length(); i++) {
-    }
-}
 void main() {
-    vec3 c = vec3(uv, 0.0);
+    vec3 c = vec3(uv + uTest[1], 0.0);
     color = vec4(c, 1.0);
-    test();
 }
 `
 
-function testParser(gl: WebGL2RenderingContext) {
-    const program = new GLProgram(gl);
-    const cr = program.compile({vs: VS, fs: ST_UNIFORMS});
-    if (cr.hasError()) throw cr.formatLogs();
-    const blocks = analyzeUniformBlocks(program);
-    const lines = Object.entries(blocks).flatMap(([name, block]) => {
-        const lines = [`export interface ${name}Offsets {`];
-        Object.entries(block.members).sort(e => e[1].offset)
-            .map(([name, span]) => {
-                let arraySize, arrayStride;
-                if (isArraySpan(span)) {
-                    arraySize = span.arraySize;
-                    arrayStride = span.arrayStride;
-                    return `    ${name}: [${span.offset}, ${arraySize}, ${arrayStride}],`
-                } else {
-                    return `    ${name}: ${span.offset},`
-                }
-            })
-            .forEach(l => lines.push(l));
-        lines.push('}');
-        lines.push(`const ${name}Size = ${block.blockSize}`, '');
-        return lines;
-    }).join("\n");
-    console.log(lines);
+function printBlocks(gl: WebGL2RenderingContext) {
+    const program = createAndCompile(gl, VS, ST_UNIFORMS);
+    const uniforms = collectUniforms(gl, program);
+    console.log(uniforms);
 
-    // const parsedShader = parseShader(EFFECT_UNIFORMS);
-    // console.log(parsedShader);
+    const attributes = collectAttributes(gl, program);
+    console.log(attributes);
 }
 
-export async function createFramebufferSandbox(glc: GLContext) {
-    const {gl} = glc;
-
-    const ps = parseShader(TEST_SHADER);
+export async function createShaderParserSandbox(gl: WebGL2RenderingContext): Promise<Renderer> {
+    const ps = parseShader(ST_UNIFORMS);
     console.log(ps);
-    console.log(flattenUniforms(ps));
 
-    testParser(gl);
+    printBlocks(gl);
 
-    // const parsedShader = parseShader(VS);
-    // console.log(parsedShader)
-
-    const quadBuffer = new QuadBuffer(gl);
-
-    const renderProgram = await createQuadProgram(gl, {vs: VS, fs: RENDER_FS});
-
-    renderProgram.use();
     return {
         render() {
-            renderProgram.use();
-            quadBuffer.render();
         }
-    };
+    }
 }
 
 const TEST_SHADER = `
